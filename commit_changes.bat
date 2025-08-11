@@ -1,0 +1,15 @@
+@echo off
+echo Committing all changes to git...
+git add .
+git commit -m "Add pattern-based hardware testing and UI layout improvements
+
+- Added LED pattern testing functionality for ESP8266/ESP32
+- Implemented custom serial protocol for hardware verification
+- Added pattern detection and sample pattern creation
+- Moved upload log to right side of UI for better layout
+- Added auto-reset and visual verification features
+- Fixed on_device_change method signature for event binding
+- Enhanced device control with smart reset capabilities
+- Added comprehensive pattern testing UI with test cycle automation"
+echo Done!
+pause
