@@ -43,6 +43,23 @@ class JTechPixelUploader:
         self.upload_progress = tk.DoubleVar()
         self.is_uploading = False
         
+        # Enhanced UI attributes (for compatibility)
+        self.led_type = tk.StringVar(value="WS2812B")
+        self.current_theme = tk.StringVar(value="clam")
+        self.matrix_width = tk.StringVar(value="8")
+        self.matrix_height = tk.StringVar(value="8")
+        self.device_status_label = None
+        self.firmware_label = None
+        self.progress_bar = None
+        self.status_label = None
+        self.flow_status_label = None
+        self.activity_label = None
+        self.current_preview_pattern = None
+        self.animation_running = False
+        self.preview_window = None
+        self.preview_canvas = None
+        self.pattern_info_label = None
+        
         # Check available tools
         self.available_tools = utils.get_available_tools()
         
