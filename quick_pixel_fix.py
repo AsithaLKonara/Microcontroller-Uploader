@@ -1,0 +1,195 @@
+#!/usr/bin/env python3
+"""
+Quick Pixel Fix - Immediate troubleshooting for LED issues
+"""
+
+def quick_diagnosis():
+    """Quick diagnosis questions"""
+    print("🚨 QUICK PIXEL DIAGNOSIS")
+    print("=" * 40)
+    
+    print("\n❓ ANSWER THESE QUESTIONS:")
+    print("1. What type of upload did you do?")
+    print("   • .dat file (LED pattern)")
+    print("   • .bin file (firmware)")
+    print("   • .hex file (firmware)")
+    
+    print("\n2. What hardware are you using?")
+    print("   • ESP8266 (NodeMCU, Wemos D1 Mini, etc.)")
+    print("   • ESP32")
+    print("   • LED type: WS2812B, SK6812, APA102, etc.")
+    print("   • Matrix size: 8x8, 16x16, strip, etc.")
+    
+    print("\n3. What connections do you have?")
+    print("   • VCC → Power supply (voltage?)")
+    print("   • GND → Ground")
+    print("   • DIN → Which GPIO pin?")
+    
+    print("\n4. What happens when you power on?")
+    print("   • Any LED lights at all?")
+    print("   • Device power indicator on?")
+    print("   • Any serial output?")
+    
+    print("\n🔧 IMMEDIATE FIXES TO TRY:")
+    
+    print("\n1️⃣ POWER CHECK:")
+    print("   • Disconnect USB power")
+    print("   • Use external 5V power supply")
+    print("   • Ensure adequate current (2-3A for 8x8, 8-10A for 16x16)")
+    
+    print("\n2️⃣ CONNECTION CHECK:")
+    print("   • Verify VCC → 5V (not 3.3V)")
+    print("   • Verify GND → Common ground")
+    print("   • Verify DIN → GPIO2 (or your defined pin)")
+    print("   • Check for loose wires")
+    
+    print("\n3️⃣ DEVICE RESET:")
+    print("   • Press reset button on device")
+    print("   • Disconnect power for 10 seconds")
+    print("   • Reconnect and try again")
+    
+    print("\n4️⃣ SERIAL MONITOR:")
+    print("   • Connect to device via USB")
+    print("   • Open serial monitor at 115200 baud")
+    print("   • Reset device and watch for messages")
+    print("   • Look for 'LED Test Starting...' or similar")
+
+def create_minimal_test():
+    """Create minimal test code"""
+    print("\n🎯 MINIMAL TEST CODE:")
+    print("=" * 30)
+    
+    print("\n📱 ESP8266 Minimal LED Test:")
+    print("```cpp")
+    print("#include <Adafruit_NeoPixel.h>")
+    print("")
+    print("#define LED_PIN     2  // GPIO2 - change if needed")
+    print("#define NUM_LEDS    64 // 8x8 matrix")
+    print("")
+    print("Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);")
+    print("")
+    print("void setup() {")
+    print("  Serial.begin(115200);")
+    print("  Serial.println(\"=== LED TEST STARTING ===\");")
+    print("  ")
+    print("  strip.begin();")
+    print("  strip.setBrightness(50);")
+    print("  strip.clear();")
+    print("  strip.show();")
+    print("  ")
+    print("  Serial.println(\"LED strip initialized\");")
+    print("}")
+    print("")
+    print("void loop() {")
+    print("  Serial.println(\"Testing RED...\");")
+    print("  testColor(255, 0, 0);  // Red")
+    print("  delay(2000);")
+    print("  ")
+    print("  Serial.println(\"Testing GREEN...\");")
+    print("  testColor(0, 255, 0);  // Green")
+    print("  delay(2000);")
+    print("  ")
+    print("  Serial.println(\"Testing BLUE...\");")
+    print("  testColor(0, 0, 255);  // Blue")
+    print("  delay(2000);")
+    print("  ")
+    print("  Serial.println(\"Testing WHITE...\");")
+    print("  testColor(255, 255, 255);  // White")
+    print("  delay(2000);")
+    print("  ")
+    print("  Serial.println(\"Turning OFF...\");")
+    print("  strip.clear();")
+    print("  strip.show();")
+    print("  delay(2000);")
+    print("}")
+    print("")
+    print("void testColor(int r, int g, int b) {")
+    print("  for(int i = 0; i < NUM_LEDS; i++) {")
+    print("    strip.setPixelColor(i, strip.Color(r, g, b));")
+    print("  }")
+    print("  strip.show();")
+    print("}")
+    print("```")
+    
+    print("\n📋 UPLOAD CHECKLIST:")
+    print("   □ Copy this code to Arduino IDE")
+    print("   □ Select correct board (ESP8266)")
+    print("   □ Select correct port")
+    print("   □ Install Adafruit_NeoPixel library")
+    print("   □ Upload code")
+    print("   □ Open serial monitor at 115200 baud")
+    print("   □ Reset device and watch for messages")
+
+def hardware_verification():
+    """Hardware verification steps"""
+    print("\n🔌 HARDWARE VERIFICATION:")
+    print("=" * 30)
+    
+    print("\n📏 WIRING DIAGRAM:")
+    print("   ESP8266/ESP32 → LED Matrix")
+    print("   ┌─────────────┐    ┌─────────────┐")
+    print("   │    VIN      │────│    5V       │")
+    print("   │    GND      │────│    GND      │")
+    print("   │   GPIO2     │────│    DIN      │")
+    print("   └─────────────┘    └─────────────┘")
+    
+    print("\n⚡ POWER REQUIREMENTS:")
+    print("   • 8x8 RGB Matrix: 5V @ 2-3A")
+    print("   • 16x16 RGB Matrix: 5V @ 8-10A")
+    print("   • Individual RGB LED: 5V @ 60mA")
+    print("   • USB power: Limited to ~500mA")
+    
+    print("\n🎯 GPIO PIN OPTIONS:")
+    print("   ESP8266 Safe Pins:")
+    print("   • GPIO2 (D4) - Recommended")
+    print("   • GPIO4 (D2)")
+    print("   • GPIO5 (D1)")
+    print("   • GPIO12 (D6)")
+    print("   • GPIO13 (D7)")
+    print("   • GPIO14 (D5)")
+    
+    print("\n❌ AVOID THESE PINS:")
+    print("   • GPIO0 (D3) - Boot mode")
+    print("   • GPIO15 (D8) - Boot mode")
+    print("   • GPIO16 (D0) - Boot mode")
+
+def common_solutions():
+    """Common solutions to try"""
+    print("\n💡 COMMON SOLUTIONS:")
+    print("=" * 25)
+    
+    print("\n1️⃣ VOLTAGE ISSUES:")
+    print("   • Use 5V power supply (not 3.3V)")
+    print("   • Don't power LEDs from USB")
+    print("   • Check power supply current rating")
+    
+    print("\n2️⃣ WIRING ISSUES:")
+    print("   • Use solid core wires")
+    print("   • Keep wires short")
+    print("   • Avoid wire crossings")
+    print("   • Check for cold solder joints")
+    
+    print("\n3️⃣ CODE ISSUES:")
+    print("   • Verify correct LED count")
+    print("   • Check GPIO pin number")
+    print("   • Ensure library is installed")
+    print("   • Test with minimal code first")
+    
+    print("\n4️⃣ DEVICE ISSUES:")
+    print("   • Reset device after upload")
+    print("   • Check for error messages")
+    print("   • Verify board selection")
+    print("   • Try different USB cable")
+
+if __name__ == "__main__":
+    quick_diagnosis()
+    create_minimal_test()
+    hardware_verification()
+    common_solutions()
+    
+    print("\n🚨 URGENT: Check these first!")
+    print("   1. Are you using 5V power supply?")
+    print("   2. Is DIN connected to GPIO2?")
+    print("   3. Are all ground connections shared?")
+    print("   4. Is the device actually running? (check serial)")
+    print("   5. Are there any error messages?")

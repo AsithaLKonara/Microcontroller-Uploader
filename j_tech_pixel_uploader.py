@@ -299,6 +299,37 @@ class JTechPixelUploader:
                         self.log_message("✅ Pattern testing mode automatically enabled")
                     else:
                         self.log_message("ℹ️ Pattern testing mode not enabled - using standard upload")
+    
+    def detect_led_pattern_data(self, file_path):
+        """Detect if a file contains LED pattern data"""
+        try:
+            if not file_path or not os.path.exists(file_path):
+                return False, "File not found"
+            
+            # Check file extension
+            file_ext = os.path.splitext(file_path)[1].lower()
+            
+            if file_ext == '.dat':
+                # .dat files are typically LED pattern data
+                file_size = os.path.getsize(file_path)
+                if file_size > 0:
+                    return True, f"LED pattern data file (.dat) - {file_size} bytes"
+                else:
+                    return False, "Empty .dat file"
+            
+            elif file_ext == '.bin':
+                # Check if .bin file might contain LED pattern data
+                file_size = os.path.getsize(file_path)
+                if file_size > 0 and file_size <= 1024:  # Small .bin files might be patterns
+                    return True, f"Potential LED pattern data (.bin) - {file_size} bytes"
+                else:
+                    return False, "Standard firmware file (.bin)"
+            
+            else:
+                return False, f"Unsupported file type: {file_ext}"
+                
+        except Exception as e:
+            return False, f"Error analyzing file: {str(e)}"
             
     def update_file_info(self):
         """Update the file information display"""

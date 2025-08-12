@@ -1,0 +1,39 @@
+J Tech Pixel Uploader - Upload Log
+Generated: 2025-08-13 00:41:49
+Device: ESP8266
+Firmware: test_firmware
+Port: COM3
+Baud Rate: 115200
+Duration: 0.00 seconds
+============================================================
+
+[10:00:01] INFO: 📝 Upload session started: 20250813_004149
+[10:00:01] INFO: 📱 Device: ESP8266
+[10:00:01] INFO: 📁 Firmware: test_firmware
+[10:00:01] INFO: 🔌 Port: COM3
+[10:00:01] INFO: ⚡ Baud Rate: 115200
+[10:00:01] INFO: ==================================================
+[10:00:02] INFO: Starting upload for ESP8266 on COM3 at 115200 baud
+[10:00:02] INFO: Firmware: test_firmware.bin
+[10:00:03] OUTPUT: esptool.py v4.7.0
+[10:00:03] OUTPUT: Serial port COM3
+[10:00:04] OUTPUT: Connecting...
+[10:00:05] OUTPUT: Chip is ESP8266EX
+[10:00:06] OUTPUT: Features: WiFi
+[10:00:07] OUTPUT: Uploading stub...
+[10:00:08] OUTPUT: Running stub...
+[10:00:09] OUTPUT: Stub running...
+[10:00:10] OUTPUT: Configuring flash size...
+[10:00:11] OUTPUT: Flash will be erased from 0x00000 to 0x05fff...
+[10:00:12] OUTPUT: Compressed 24576 bytes to 17823...
+[10:00:13] OUTPUT: Writing 24576 bytes (17823 compressed) at 0x00000000 in 1.6 seconds (121.6 kbit/s)...
+[10:00:15] OUTPUT: Hash of data verified.
+[10:00:16] OUTPUT: Leaving...
+[10:00:17] OUTPUT: Hard resetting via RTS pin...
+[10:00:18] SUCCESS: 🎉 Upload completed successfully!
+[10:00:18] INFO: 💡 Your ESP8266 should now be running the new firmware!
+
+============================================================
+Upload completed at: 2025-08-13 00:41:49
+Total log entries: 25
+Log file: upload_20250813_004149_ESP8266_test_firmware.log

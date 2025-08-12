@@ -15,6 +15,15 @@ DEFAULT_BAUD_RATE = "115200"
 DEFAULT_DEVICE = "ESP8266"
 DEFAULT_WINDOW_SIZE = "800x600"
 
+# Supported devices
+SUPPORTED_DEVICES = {
+    "ESP8266": "ESP8266 NodeMCU, Wemos D1 Mini",
+    "ESP32": "ESP32 DevKit, ESP32-WROOM", 
+    "AVR": "Arduino Uno, Nano, Pro Mini",
+    "STM32": "STM32F103, STM32F407",
+    "PIC": "PIC microcontrollers via MPLAB IPE"
+}
+
 # Supported file types
 SUPPORTED_FILES = {
     "Firmware files": "*.bin *.hex *.dat *.elf",
@@ -123,13 +132,64 @@ RECOMMENDED_RESET_COMBINATIONS = {
 
 # UI Colors and styling
 UI_COLORS = {
-    "primary": "#007acc",
-    "success": "#28a745",
-    "warning": "#ffc107",
-    "error": "#dc3545",
-    "info": "#17a2b8",
-    "light": "#f8f9fa",
-    "dark": "#343a40"
+    # Primary brand colors
+    "primary": "#2563eb",           # Modern blue
+    "primary_dark": "#1d4ed8",      # Darker blue for hover
+    "primary_light": "#dbeafe",     # Light blue for backgrounds
+    
+    # Status colors
+    "success": "#059669",           # Modern green
+    "success_light": "#d1fae5",     # Light green
+    "warning": "#d97706",           # Modern orange
+    "warning_light": "#fed7aa",     # Light orange
+    "error": "#dc2626",             # Modern red
+    "error_light": "#fecaca",       # Light red
+    "info": "#0891b2",              # Modern cyan
+    "info_light": "#cffafe",        # Light cyan
+    
+    # Neutral colors
+    "light": "#f8fafc",             # Very light gray
+    "light_gray": "#f1f5f9",        # Light gray
+    "gray": "#64748b",              # Medium gray
+    "dark": "#1e293b",              # Dark gray
+    "darker": "#0f172a",            # Very dark gray
+    
+    # Accent colors
+    "accent": "#7c3aed",            # Purple accent
+    "accent_light": "#ede9fe",      # Light purple
+    "highlight": "#fbbf24",         # Yellow highlight
+    "highlight_light": "#fef3c7"    # Light yellow
+}
+
+# Modern UI themes
+UI_THEMES = {
+    "light": {
+        "bg": "#ffffff",
+        "fg": "#1e293b",
+        "frame_bg": "#f8fafc",
+        "button_bg": "#f1f5f9",
+        "button_fg": "#1e293b",
+        "accent_bg": "#dbeafe",
+        "accent_fg": "#1d4ed8"
+    },
+    "dark": {
+        "bg": "#0f172a",
+        "fg": "#f1f5f9",
+        "frame_bg": "#1e293b",
+        "button_bg": "#334155",
+        "button_fg": "#f1f5f9",
+        "accent_bg": "#1e3a8a",
+        "accent_fg": "#dbeafe"
+    },
+    "blue": {
+        "bg": "#f0f9ff",
+        "fg": "#0c4a6e",
+        "frame_bg": "#e0f2fe",
+        "button_bg": "#bae6fd",
+        "button_fg": "#0c4a6e",
+        "accent_bg": "#0284c7",
+        "accent_fg": "#ffffff"
+    }
 }
 
 # Logging configuration

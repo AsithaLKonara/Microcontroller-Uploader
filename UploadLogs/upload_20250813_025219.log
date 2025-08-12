@@ -1,0 +1,34 @@
+J Tech Pixel Uploader - Upload Log
+==================================================
+
+Session: 20250813_025219
+Device: ESP8266
+Port: COM5
+Baud: 115200
+Firmware: C:/Users/asith/Documents/MicroControllerUploaderPython/SampleFirmware/heart_8x8.dat
+==================================================
+
+[02:52:19] ℹ️ Starting enhanced upload for ESP8266 on COM5 at 115200 baud
+[02:52:19] ℹ️ Firmware: heart_8x8.dat
+[02:52:19] ℹ️ Using reset options: --before default-reset --after hard-reset
+[02:52:19] ℹ️ Executing: python -m esptool --port COM5 --baud 115200 --before default-reset --after hard-reset write-flash 0x00000 C:/Users/asith/Documents/MicroControllerUploaderPython/SampleFirmware/heart_8x8.dat
+[02:52:19] ℹ️ esptool v5.0.2
+[02:52:19] ℹ️ Serial port COM5:
+[02:52:20] ℹ️ Connecting...
+[02:52:20] ℹ️ Detecting chip type... ESP8266
+[02:52:20] ℹ️ Connected to ESP8266 on COM5:
+[02:52:20] ℹ️ Chip type:          ESP8266EX
+[02:52:20] ℹ️ Features:           Wi-Fi, 160MHz
+[02:52:20] ℹ️ Crystal frequency:  26MHz
+[02:52:20] ℹ️ MAC:                bc:ff:4d:35:02:be
+[02:52:20] ℹ️ Stub flasher is already running. No upload is necessary.
+[02:52:20] ℹ️ Configuring flash size...
+[02:52:20] ℹ️ Flash will be erased from 0x00000000 to 0x00000fff...
+[02:52:20] ℹ️ Compressed 192 bytes to 29...
+[02:52:20] ℹ️ Writing at 0x00000000 [                              ]   0.0% 0/29 bytes...
+[02:52:20] ℹ️ Writing at 0x000000c0 [==============================] 100.0% 29/29 bytes...
+[02:52:20] ℹ️ Wrote 192 bytes (29 compressed) at 0x00000000 in 0.1 seconds (14.7 kbit/s).
+[02:52:20] ℹ️ Hash of data verified.
+[02:52:20] ℹ️ Hard resetting via RTS pin...
+[02:52:20] ✅ 🎉 Upload completed successfully!
+[02:52:20] ℹ️ 💡 Your ESP8266 should now be running the new firmware!

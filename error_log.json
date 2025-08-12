@@ -1,0 +1,26 @@
+[
+  {
+    "timestamp": "2025-08-13T01:51:07.689557",
+    "error": "ESP8266 upload failed",
+    "error_type": "UPLOAD",
+    "context": {
+      "device": "ESP8266",
+      "port": "COM4",
+      "firmware": "C:/Users/asith/Documents/MicroControllerUploaderPython/SampleFirmware/alternating_cols_8x8.bin"
+    },
+    "traceback": "NoneType: None\n",
+    "recovery_attempts": 0
+  },
+  {
+    "timestamp": "2025-08-13T01:52:20.533805",
+    "error": "ESP8266 upload failed",
+    "error_type": "UPLOAD",
+    "context": {
+      "device": "ESP8266",
+      "port": "COM4",
+      "firmware": "C:/Users/asith/Documents/MicroControllerUploaderPython/SampleFirmware/alternating_cols_8x8.bin"
+    },
+    "traceback": "NoneType: None\n",
+    "recovery_attempts": 0
+  }
+]

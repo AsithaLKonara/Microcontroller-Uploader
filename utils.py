@@ -107,8 +107,8 @@ def validate_firmware_file(file_path: str, device_type: str) -> Tuple[bool, str]
     file_ext = os.path.splitext(file_path)[1].lower()
     
     if device_type in ["ESP8266", "ESP32"]:
-        if file_ext not in [".bin", ".hex"]:
-            return False, f"ESP devices require .bin or .hex files, got {file_ext}"
+        if file_ext not in [".bin", ".hex", ".dat"]:
+            return False, f"ESP devices require .bin, .hex, or .dat files, got {file_ext}"
     elif device_type == "AVR":
         if file_ext != ".hex":
             return False, f"AVR devices require .hex files, got {file_ext}"
@@ -225,7 +225,13 @@ def create_sample_led_patterns():
         "checkerboard_8x8.bin": create_checkerboard_pattern,
         "rainbow_8x8.bin": create_rainbow_pattern,
         "pulse_8x8.bin": create_pulse_pattern,
-        "spiral_8x8.bin": create_spiral_pattern
+        "spiral_8x8.bin": create_spiral_pattern,
+        # Add .dat versions
+        "alternating_cols_8x8.dat": create_alternating_cols_pattern,
+        "checkerboard_8x8.dat": create_checkerboard_pattern,
+        "rainbow_8x8.dat": create_rainbow_pattern,
+        "pulse_8x8.dat": create_pulse_pattern,
+        "spiral_8x8.dat": create_spiral_pattern
     }
     
     sample_dir = "SampleFirmware"
@@ -327,3 +333,385 @@ def create_spiral_pattern():
         pattern.extend([r, g, b])
     
     return pattern
+
+def create_heart_pattern():
+    """Create heart pattern (8x8 matrix)"""
+    # 8x8 matrix, 3 bytes per LED (RGB), heart shape
+    pattern = bytearray()
+    
+    # Heart pattern matrix (1 = red, 0 = black)
+    heart_matrix = [
+        [0,0,0,0,0,0,0,0],
+        [0,1,1,0,0,1,1,0],
+        [1,1,1,1,1,1,1,1],
+        [1,1,1,1,1,1,1,1],
+        [1,1,1,1,1,1,1,1],
+        [0,1,1,1,1,1,1,0],
+        [0,0,1,1,1,1,0,0],
+        [0,0,0,1,1,0,0,0]
+    ]
+    
+    for row in range(8):
+        for col in range(8):
+            if heart_matrix[row][col]:
+                pattern.extend([255, 0, 0])  # Red
+            else:
+                pattern.extend([0, 0, 0])    # Black
+    
+    return pattern
+
+def create_cross_pattern():
+    """Create cross pattern (8x8 matrix)"""
+    # 8x8 matrix, 3 bytes per LED (RGB), cross shape
+    pattern = bytearray()
+    
+    for row in range(8):
+        for col in range(8):
+            # Create cross pattern
+            if row == 3 or row == 4 or col == 3 or col == 4:
+                pattern.extend([0, 255, 0])  # Green
+            else:
+                pattern.extend([0, 0, 0])    # Black
+    
+    return pattern
+
+def create_border_pattern():
+    """Create border pattern (8x8 matrix)"""
+    # 8x8 matrix, 3 bytes per LED (RGB), border only
+    pattern = bytearray()
+    
+    for row in range(8):
+        for col in range(8):
+            # Create border pattern
+            if row == 0 or row == 7 or col == 0 or col == 7:
+                pattern.extend([0, 0, 255])  # Blue
+            else:
+                pattern.extend([0, 0, 0])    # Black
+    
+    return pattern
+
+def create_diagonal_pattern():
+    """Create diagonal pattern (8x8 matrix)"""
+    # 8x8 matrix, 3 bytes per LED (RGB), diagonal lines
+    pattern = bytearray()
+    
+    for row in range(8):
+        for col in range(8):
+            # Create diagonal pattern
+            if row == col or row + col == 7:
+                pattern.extend([255, 255, 0])  # Yellow
+            else:
+                pattern.extend([0, 0, 0])      # Black
+    
+    return pattern
+
+def create_sample_dat_files():
+    """Create sample .dat files specifically for LED patterns"""
+    patterns = {
+        "heart_8x8.dat": create_heart_pattern,
+        "cross_8x8.dat": create_cross_pattern,
+        "border_8x8.dat": create_border_pattern,
+        "diagonal_8x8.dat": create_diagonal_pattern,
+        "rainbow_rgb_8x8.dat": create_rainbow_pattern
+    }
+    
+    sample_dir = "SampleFirmware"
+    os.makedirs(sample_dir, exist_ok=True)
+    
+    created_files = []
+    for filename, pattern_func in patterns.items():
+        filepath = os.path.join(sample_dir, filename)
+        try:
+            pattern_data = pattern_func()
+            with open(filepath, 'wb') as f:
+                f.write(pattern_data)
+            created_files.append(filename)
+            print(f"Created {filename}: {len(pattern_data)} bytes")
+        except Exception as e:
+            print(f"Error creating {filename}: {e}")
+    
+    return created_files
+
+def validate_dat_file(file_path: str) -> Tuple[bool, str]:
+    """Validate if a .dat file contains valid LED pattern data"""
+    try:
+        if not os.path.exists(file_path):
+            return False, "File does not exist"
+        
+        if not file_path.lower().endswith('.dat'):
+            return False, "File is not a .dat file"
+        
+        file_size = os.path.getsize(file_path)
+        if file_size == 0:
+            return False, "File is empty"
+        
+        # Check if file size is reasonable for LED patterns
+        if file_size > 10240:  # 10KB max for LED patterns
+            return False, f"File too large ({file_size} bytes) for LED pattern data"
+        
+        # Read file and check if it's binary data
+        with open(file_path, 'rb') as f:
+            data = f.read()
+        
+        # Check if data size is a multiple of 3 (RGB values)
+        if len(data) % 3 != 0:
+            return False, f"Data size ({len(data)} bytes) is not a multiple of 3 (RGB values)"
+        
+        # Check if this looks like RGB data
+        led_count = len(data) // 3
+        if led_count < 1:
+            return False, "No LED data found"
+        
+        # Validate RGB values (should be 0-255)
+        for i in range(0, len(data), 3):
+            r, g, b = data[i:i+3]
+            if not (0 <= r <= 255 and 0 <= g <= 255 and 0 <= b <= 255):
+                return False, f"Invalid RGB values at position {i//3}"
+        
+        # Determine matrix size
+        if led_count == 64:
+            matrix_size = "8x8"
+        elif led_count == 256:
+            matrix_size = "16x16"
+        else:
+            matrix_size = f"{led_count} LEDs"
+        
+        return True, f"Valid LED pattern data: {matrix_size} matrix, {len(data)} bytes"
+        
+    except Exception as e:
+        return False, f"Error validating .dat file: {str(e)}"
+
+def get_dat_file_info(file_path: str) -> Dict[str, any]:
+    """Get detailed information about a .dat file"""
+    try:
+        if not os.path.exists(file_path):
+            return {"error": "File does not exist"}
+        
+        file_size = os.path.getsize(file_path)
+        
+        with open(file_path, 'rb') as f:
+            data = f.read()
+        
+        led_count = len(data) // 3 if len(data) % 3 == 0 else 0
+        
+        info = {
+            "file_size": file_size,
+            "data_size": len(data),
+            "led_count": led_count,
+            "is_valid_rgb": len(data) % 3 == 0,
+            "matrix_size": None,
+            "rgb_values": []
+        }
+        
+        if info["is_valid_rgb"]:
+            if led_count == 64:
+                info["matrix_size"] = "8x8"
+            elif led_count == 256:
+                info["matrix_size"] = "16x16"
+            else:
+                info["matrix_size"] = f"{led_count} LEDs"
+            
+            # Sample first few RGB values
+            sample_count = min(10, led_count)
+            for i in range(0, sample_count * 3, 3):
+                if i + 2 < len(data):
+                    r, g, b = data[i:i+3]
+                    info["rgb_values"].append((r, g, b))
+        
+        return info
+        
+    except Exception as e:
+        return {"error": f"Error reading .dat file: {str(e)}"}
+
+import sys
+
+def check_and_install_dependencies():
+    """Check and automatically install required dependencies"""
+    print("🔍 Checking required dependencies...")
+    
+    # Check Python version
+    python_version = platform.python_version()
+    print(f"🐍 Python version: {python_version}")
+    
+    # Check if pip is available
+    try:
+        import pip
+        print("📦 pip is available")
+    except ImportError:
+        print("❌ pip not found - cannot install packages")
+        return False
+    
+    # List of required packages
+    required_packages = {
+        "esptool": "esptool",
+        "pyserial": "serial",
+        "tkinter": "tkinter"
+    }
+    
+    missing_packages = []
+    
+    # Check each package
+    for package_name, import_name in required_packages.items():
+        try:
+            __import__(import_name)
+            print(f"✅ {package_name} is available")
+        except ImportError:
+            print(f"❌ {package_name} not found")
+            missing_packages.append(package_name)
+    
+    # Install missing packages
+    if missing_packages:
+        print(f"\n📥 Installing missing packages: {', '.join(missing_packages)}")
+        
+        for package in missing_packages:
+            try:
+                print(f"📦 Installing {package}...")
+                result = subprocess.run([
+                    sys.executable, "-m", "pip", "install", package, "--user"
+                ], capture_output=True, text=True, timeout=60)
+                
+                if result.returncode == 0:
+                    print(f"✅ {package} installed successfully")
+                else:
+                    print(f"❌ Failed to install {package}: {result.stderr}")
+                    return False
+                    
+            except subprocess.TimeoutExpired:
+                print(f"⏰ Timeout installing {package}")
+                return False
+            except Exception as e:
+                print(f"❌ Error installing {package}: {e}")
+                return False
+    
+    print("🎉 All dependencies are available!")
+    return True
+
+def install_esptool():
+    """Install esptool if not available"""
+    try:
+        print("📥 Installing esptool...")
+        
+        # Try to install esptool
+        result = subprocess.run([
+            sys.executable, "-m", "pip", "install", "esptool", "--user"
+        ], capture_output=True, text=True, timeout=60)
+        
+        if result.returncode == 0:
+            print("✅ esptool installed successfully")
+            return True
+        else:
+            print(f"❌ Failed to install esptool: {result.stderr}")
+            return False
+            
+    except subprocess.TimeoutExpired:
+        print("⏰ Timeout installing esptool")
+        return False
+    except Exception as e:
+        print(f"❌ Error installing esptool: {e}")
+        return False
+
+def check_python_version():
+    """Check if Python version meets requirements"""
+    version = platform.python_version_tuple()
+    major, minor = int(version[0]), int(version[1])
+    
+    if major < 3 or (major == 3 and minor < 7):
+        return False, f"Python {major}.{minor} detected. Python 3.7+ is required."
+    
+    return True, f"Python {major}.{minor} - Version OK"
+
+def get_system_dependencies():
+    """Get information about system dependencies"""
+    dependencies = {
+        "python": {
+            "required": "3.7+",
+            "current": platform.python_version(),
+            "status": "unknown"
+        },
+        "pip": {
+            "required": "Available",
+            "current": "Unknown",
+            "status": "unknown"
+        },
+        "esptool": {
+            "required": "Available",
+            "current": "Unknown",
+            "status": "unknown"
+        },
+        "pyserial": {
+            "required": "Available",
+            "current": "Unknown",
+            "status": "unknown"
+        }
+    }
+    
+    # Check Python version
+    python_ok, python_msg = check_python_version()
+    dependencies["python"]["status"] = "✅ OK" if python_ok else "❌ Too old"
+    
+    # Check pip
+    try:
+        import pip
+        dependencies["pip"]["current"] = pip.__version__
+        dependencies["pip"]["status"] = "✅ Available"
+    except ImportError:
+        dependencies["pip"]["current"] = "Not found"
+        dependencies["pip"]["status"] = "❌ Missing"
+    
+    # Check esptool
+    esptool_path = find_esptool()
+    if esptool_path:
+        dependencies["esptool"]["current"] = "Found"
+        dependencies["esptool"]["status"] = "✅ Available"
+    else:
+        dependencies["esptool"]["current"] = "Not found"
+        dependencies["esptool"]["status"] = "❌ Missing"
+    
+    # Check pyserial
+    try:
+        import serial
+        dependencies["pyserial"]["current"] = serial.__version__
+        dependencies["pyserial"]["status"] = "✅ Available"
+    except ImportError:
+        dependencies["pyserial"]["current"] = "Not found"
+        dependencies["pyserial"]["status"] = "❌ Missing"
+    
+    return dependencies
+
+def auto_fix_dependencies():
+    """Automatically fix missing dependencies"""
+    print("🔧 Auto-fixing dependencies...")
+    
+    dependencies = get_system_dependencies()
+    fixed_count = 0
+    
+    # Fix pip if missing
+    if dependencies["pip"]["status"] == "❌ Missing":
+        print("📥 Installing pip...")
+        # This would require more complex logic to install pip
+        print("⚠️ pip installation requires manual intervention")
+    
+    # Fix esptool if missing
+    if dependencies["esptool"]["status"] == "❌ Missing":
+        print("📥 Installing esptool...")
+        if install_esptool():
+            fixed_count += 1
+    
+    # Fix pyserial if missing
+    if dependencies["pyserial"]["status"] == "❌ Missing":
+        print("📥 Installing pyserial...")
+        try:
+            result = subprocess.run([
+                sys.executable, "-m", "pip", "install", "pyserial", "--user"
+            ], capture_output=True, text=True, timeout=60)
+            
+            if result.returncode == 0:
+                print("✅ pyserial installed successfully")
+                fixed_count += 1
+            else:
+                print(f"❌ Failed to install pyserial: {result.stderr}")
+        except Exception as e:
+            print(f"❌ Error installing pyserial: {e}")
+    
+    print(f"🎉 Fixed {fixed_count} dependencies automatically")
+    return fixed_count
