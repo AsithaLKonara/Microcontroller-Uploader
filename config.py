@@ -58,14 +58,14 @@ LED_MATRIX_CONFIGS = {
 DEVICE_CONFIGS = {
     "ESP8266": {
         "command": "python",
-        "args": ["-m", "esptool", "--port", "{port}", "--baud", "{baud}", "write-flash", "0x00000", "{file}"],
+        "args": ["-m", "esptool", "--port", "{port}", "--baud", "{baud}", "--before", "default-reset", "--after", "hard-reset", "write-flash", "0x00000", "{file}"],
         "description": "ESP8266 NodeMCU, Wemos D1 Mini",
         "default_baud": "115200",
         "supported_files": ["*.bin", "*.hex"]
     },
     "ESP32": {
         "command": "python",
-        "args": ["-m", "esptool", "--chip", "esp32", "--port", "{port}", "--baud", "{baud}", "write-flash", "0x1000", "{file}"],
+        "args": ["-m", "esptool", "--chip", "esp32", "--port", "{port}", "--baud", "{baud}", "--before", "default-reset", "--after", "hard-reset", "write-flash", "0x1000", "{file}"],
         "description": "ESP32 DevKit, ESP32-WROOM",
         "default_baud": "115200",
         "supported_files": ["*.bin", "*.hex"]
@@ -98,6 +98,28 @@ BAUD_RATES = [
     "9600", "19200", "38400", "57600", "115200", 
     "230400", "460800", "921600", "1500000", "2000000"
 ]
+
+# Advanced esptool options for better reset control
+ESPTOOL_RESET_OPTIONS = {
+    "before_reset": [
+        "default-reset",    # Use DTR/RTS lines to reset into bootloader
+        "no-reset",         # Skip reset, useful if hardware isn't wired for reset
+        "usb-reset"         # USB reset (ESP32 only)
+    ],
+    "after_reset": [
+        "hard-reset",       # Hard reset after upload
+        "soft-reset",       # Soft reset after upload  
+        "no-reset"          # No reset after upload
+    ]
+}
+
+# Recommended reset combinations for different scenarios
+RECOMMENDED_RESET_COMBINATIONS = {
+    "auto_flash": ("default-reset", "hard-reset"),      # Standard auto-flash
+    "manual_reset": ("no-reset", "hard-reset"),         # Manual reset before upload
+    "no_reset": ("no-reset", "no-reset"),               # No reset at all
+    "force_flash": ("usb-reset", "hard-reset")          # Force flash mode (ESP32)
+}
 
 # UI Colors and styling
 UI_COLORS = {

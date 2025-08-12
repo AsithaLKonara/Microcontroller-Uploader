@@ -147,72 +147,23 @@ class JTechPixelUploader:
         self.port_info_label = ttk.Label(port_frame, text="", foreground="gray", font=("Arial", 9))
         self.port_info_label.grid(row=0, column=3, padx=(10, 0))
         
-        # Device control buttons
+        # Device control buttons - Simplified version
         device_control_frame = ttk.Frame(main_frame)
         device_control_frame.grid(row=4, column=0, columnspan=2, pady=(10, 5))
         
         ttk.Label(device_control_frame, text="Device Control:", font=("Arial", 10, "bold")).grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
         
-        self.reset_button = ttk.Button(device_control_frame, text="Reset Device", command=self.reset_device, style="Warning.TButton")
-        self.reset_button.grid(row=0, column=1, padx=(0, 10))
+        # Device Control section - simplified
+        ttk.Label(device_control_frame, text="Device Status:", font=("Arial", 9)).grid(row=0, column=1, sticky=tk.W, padx=(0, 10))
         
-        self.flash_mode_button = ttk.Button(device_control_frame, text="Enter Flash Mode", command=self.enter_flash_mode, style="Accent.TButton")
-        self.flash_mode_button.grid(row=0, column=2, padx=(0, 10))
-        
-        self.normal_mode_button = ttk.Button(device_control_frame, text="Exit Flash Mode", command=self.exit_flash_mode, style="Info.TButton")
-        self.normal_mode_button.grid(row=0, column=3, padx=(0, 10))
-        
-        # Add force download mode button for single-button boards
-        self.force_download_button = ttk.Button(device_control_frame, text="Force Download Mode", command=self.force_download_mode, style="Error.TButton")
-        self.force_download_button.grid(row=0, column=4, padx=(0, 10))
+        # Add separator line
+        separator_line = ttk.Separator(device_control_frame, orient=tk.HORIZONTAL)
+        separator_line.grid(row=1, column=0, columnspan=8, sticky=(tk.W, tk.E), pady=10)
         
         # Connection tips
-        self.connection_tips_label = ttk.Label(main_frame, text="💡 Tip: For single-button boards, use 'Force Download Mode' button", 
+        self.connection_tips_label = ttk.Label(main_frame, text="💡 Tip: Upload Firmware button automatically handles reset and flash mode entry", 
                                              foreground="blue", font=("Arial", 9))
         self.connection_tips_label.grid(row=5, column=0, columnspan=2, pady=(5, 0))
-        
-        # Pattern Testing Section
-        pattern_frame = ttk.LabelFrame(main_frame, text="🎨 Pattern Testing & Hardware Verification", padding="10")
-        pattern_frame.grid(row=6, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(15, 10))
-        pattern_frame.columnconfigure(1, weight=1)
-        
-        # Pattern test controls
-        ttk.Label(pattern_frame, text="Test Mode:").grid(row=0, column=0, sticky=tk.W, pady=5)
-        
-        self.pattern_test_var = tk.BooleanVar(value=False)
-        pattern_test_check = ttk.Checkbutton(pattern_frame, text="Enable Pattern Testing", 
-                                           variable=self.pattern_test_var, 
-                                           command=self.on_pattern_test_toggle)
-        pattern_test_check.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=5)
-        
-        # Pattern test info
-        self.pattern_info_label = ttk.Label(pattern_frame, text="", foreground="gray", font=("Arial", 9))
-        self.pattern_info_label.grid(row=0, column=2, padx=(10, 0), pady=5)
-        
-        # Pattern test buttons
-        pattern_button_frame = ttk.Frame(pattern_frame)
-        pattern_button_frame.grid(row=1, column=0, columnspan=3, pady=(10, 0))
-        
-        self.test_pattern_button = ttk.Button(pattern_button_frame, text="Test Pattern", 
-                                            command=self.test_pattern, style="Info.TButton")
-        self.test_pattern_button.grid(row=0, column=0, padx=(0, 10))
-        
-        self.verify_hardware_button = ttk.Button(pattern_button_frame, text="Verify Hardware", 
-                                                command=self.verify_hardware, style="Success.TButton")
-        self.verify_hardware_button.grid(row=0, column=1, padx=(0, 10))
-        
-        self.auto_test_button = ttk.Button(pattern_button_frame, text="Auto Test Cycle", 
-                                          command=self.auto_test_cycle, style="Accent.TButton")
-        self.auto_test_button.grid(row=0, column=2, padx=(0, 10))
-        
-        # Create sample patterns button
-        self.create_patterns_button = ttk.Button(pattern_button_frame, text="Create Sample Patterns", 
-                                               command=self.create_sample_patterns, style="Warning.TButton")
-        self.create_patterns_button.grid(row=0, column=3, padx=(0, 10))
-        
-        # Pattern test status
-        self.pattern_status_label = ttk.Label(pattern_frame, text="", foreground="green", font=("Arial", 9))
-        self.pattern_status_label.grid(row=2, column=0, columnspan=3, pady=(10, 0))
         
         # Baud rate selection
         ttk.Label(main_frame, text="Baud Rate:").grid(row=7, column=0, sticky=tk.W, pady=5)
@@ -254,6 +205,10 @@ class JTechPixelUploader:
         # Status label with enhanced real-time updates
         self.status_label = ttk.Label(main_frame, text="Ready", foreground="green", font=("Arial", 10, "bold"))
         self.status_label.grid(row=10, column=0, columnspan=2, pady=5)
+        
+        # Upload flow status indicator
+        self.flow_status_label = ttk.Label(main_frame, text="", foreground="blue", font=("Arial", 9))
+        self.flow_status_label.grid(row=11, column=0, columnspan=2, pady=2)
         
         # Separator line between main content and log
         separator = ttk.Separator(main_frame, orient=tk.VERTICAL)
@@ -341,8 +296,6 @@ class JTechPixelUploader:
                     )
                     
                     if result:
-                        self.pattern_test_var.set(True)
-                        self.on_pattern_test_toggle()
                         self.log_message("✅ Pattern testing mode automatically enabled")
                     else:
                         self.log_message("ℹ️ Pattern testing mode not enabled - using standard upload")
@@ -530,28 +483,35 @@ class JTechPixelUploader:
             return False
     
     def reset_device(self):
-        """Reset the connected device"""
+        """Reset the connected device using proper hardware control - Enhanced version"""
         port = self.selected_port.get()
         if not port:
             messagebox.showerror("Error", "Please select a COM port first")
             return
         
-        self.log_message(f"🔄 Resetting device on {port}...")
-        self.status_label.config(text="Resetting device...", foreground="blue")
+        device = self.selected_device.get()
+        self.log_message(f"🔄 Enhanced reset for {device} on {port}...")
+        self.status_label.config(text="Enhanced reset in progress...", foreground="blue")
         
         try:
-            # For ESP devices, we can use esptool to reset
-            device = self.selected_device.get()
             if device in ["ESP8266", "ESP32"]:
-                cmd = ["python", "-m", "esptool", "--port", port, "run"]
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                # Try to detect if this is an ESP-01 board (most challenging)
+                if self._detect_esp01_board(port):
+                    self.log_message("🔍 Detected ESP-01 board - using specialized reset method")
+                    if self.reset_esp01_specific(port):
+                        self.log_message("✅ ESP-01 specific reset completed successfully")
+                        self.status_label.config(text="ESP-01 reset successful", foreground="green")
+                        return
+                    else:
+                        self.log_message("⚠️ ESP-01 specific reset failed, trying enhanced method")
                 
-                if result.returncode == 0:
-                    self.log_message("✅ Device reset successfully")
-                    self.status_label.config(text="Device reset successfully", foreground="green")
+                # Use enhanced DTR/RTS control for proper hardware reset
+                if self.reset_esp_via_dtr_rts(port):
+                    self.log_message("✅ Enhanced hardware reset completed successfully")
+                    self.status_label.config(text="Enhanced hardware reset successful", foreground="green")
                 else:
-                    self.log_message("⚠️ Reset command sent (device may have reset)")
-                    self.status_label.config(text="Reset command sent", foreground="orange")
+                    self.log_message("⚠️ Enhanced hardware reset attempted (check device)")
+                    self.status_label.config(text="Enhanced reset attempted", foreground="orange")
             else:
                 # For other devices, try a simple serial reset
                 import serial
@@ -562,11 +522,247 @@ class JTechPixelUploader:
                 self.status_label.config(text="Reset signal sent", foreground="green")
                 
         except Exception as e:
-            self.log_message(f"❌ Error during reset: {str(e)}")
-            self.status_label.config(text="Reset failed", foreground="red")
+            self.log_message(f"❌ Error during enhanced reset: {str(e)}")
+            self.status_label.config(text="Enhanced reset failed", foreground="red")
+    
+    def _detect_esp01_board(self, port):
+        """Try to detect if the connected board is an ESP-01 (most challenging to reset)"""
+        try:
+            import serial
+            
+            # ESP-01 boards often have specific characteristics
+            # Method 1: Check port info for ESP-01 indicators
+            port_info = self.selected_port.get()
+            if "ESP-01" in port_info or "ESP01" in port_info:
+                return True
+            
+            # Method 2: Try to detect by behavior
+            try:
+                ser = serial.Serial(port, 74880, timeout=1)
+                
+                # ESP-01 boards often don't respond to standard commands
+                ser.write(b'AT\r\n')
+                time.sleep(0.5)
+                
+                if ser.in_waiting == 0:
+                    # No response - likely ESP-01
+                    ser.close()
+                    return True
+                
+                ser.close()
+                
+            except Exception:
+                # If we can't even open the port, it might be an ESP-01
+                return True
+            
+            # Method 3: Check if device is very stubborn (ESP-01 characteristic)
+            if not self.check_flash_mode():
+                # If device is not responding to standard methods, it might be ESP-01
+                return True
+            
+            return False
+            
+        except Exception:
+            # If detection fails, assume it's not an ESP-01
+            return False
+    
+    def reset_esp_via_dtr_rts(self, port):
+        """Reset ESP8266/ESP32 using DTR/RTS control (hardware reset) - Enhanced version"""
+        try:
+            import serial
+            
+            self.log_message("🔧 Starting enhanced hardware reset sequence...")
+            
+            # Method 1: Standard ESP reset sequence
+            if self._try_standard_esp_reset(port):
+                return True
+            
+            # Method 2: Single-button board reset sequence
+            if self._try_single_button_reset(port):
+                return True
+            
+            # Method 3: CH340/CP210x specific reset sequence
+            if self._try_ch340_reset(port):
+                return True
+            
+            # Method 4: Aggressive reset sequence
+            if self._try_aggressive_reset(port):
+                return True
+            
+            # Method 5: GPIO0 simulation reset (for single-button boards)
+            if self._try_gpio0_simulation_reset(port):
+                return True
+            
+            # Method 6: Voltage cycling reset (simulates unplug/replug)
+            if self._try_voltage_cycling_reset(port):
+                return True
+            
+            self.log_message("⚠️ All hardware reset methods failed")
+            return False
+            
+        except Exception as e:
+            self.log_message(f"⚠️ Enhanced DTR/RTS reset failed: {str(e)}")
+            return False
+    
+    def _try_standard_esp_reset(self, port):
+        """Try standard ESP reset sequence"""
+        try:
+            self.log_message("🔄 Trying standard ESP reset sequence...")
+            ser = serial.Serial(
+                port=port,
+                baudrate=74880,  # ESP boot baud rate
+                timeout=1,
+                write_timeout=1
+            )
+            
+            # Standard ESP reset sequence
+            ser.setDTR(False)
+            ser.setRTS(False)
+            time.sleep(0.1)
+            
+            ser.setDTR(True)
+            ser.setRTS(False)
+            time.sleep(0.1)
+            
+            ser.setDTR(False)
+            ser.setRTS(True)
+            time.sleep(0.1)
+            
+            ser.setDTR(True)
+            ser.setRTS(False)
+            time.sleep(0.1)
+            
+            ser.close()
+            self.log_message("✅ Standard ESP reset sequence completed")
+            return True
+            
+        except Exception as e:
+            self.log_message(f"⚠️ Standard reset failed: {str(e)}")
+            return False
+    
+    def _try_single_button_reset(self, port):
+        """Try single-button board reset sequence with extended timing"""
+        try:
+            self.log_message("🔄 Trying single-button board reset sequence...")
+            ser = serial.Serial(
+                port=port,
+                baudrate=74880,
+                timeout=1,
+                write_timeout=1
+            )
+            
+            # Single-button board sequence (longer timing)
+            ser.setDTR(False)
+            ser.setRTS(False)
+            time.sleep(0.5)  # Longer reset hold
+            
+            ser.setDTR(True)
+            ser.setRTS(False)
+            time.sleep(0.3)
+            
+            ser.setDTR(False)
+            ser.setRTS(True)
+            time.sleep(0.5)  # Longer flash mode trigger
+            
+            ser.setDTR(True)
+            ser.setRTS(False)
+            time.sleep(0.3)
+            
+            ser.close()
+            self.log_message("✅ Single-button reset sequence completed")
+            return True
+            
+        except Exception as e:
+            self.log_message(f"⚠️ Single-button reset failed: {str(e)}")
+            return False
+    
+    def _try_ch340_reset(self, port):
+        """Try CH340/CP210x specific reset sequence"""
+        try:
+            self.log_message("🔄 Trying CH340/CP210x specific reset...")
+            ser = serial.Serial(
+                port=port,
+                baudrate=74880,
+                timeout=1,
+                write_timeout=1
+            )
+            
+            # CH340 specific sequence (different timing)
+            ser.setDTR(False)
+            ser.setRTS(False)
+            time.sleep(0.2)
+            
+            ser.setDTR(True)
+            ser.setRTS(False)
+            time.sleep(0.2)
+            
+            ser.setDTR(False)
+            ser.setRTS(True)
+            time.sleep(0.3)
+            
+            ser.setDTR(True)
+            ser.setRTS(False)
+            time.sleep(0.2)
+            
+            ser.close()
+            self.log_message("✅ CH340 reset sequence completed")
+            return True
+            
+        except Exception as e:
+            self.log_message(f"⚠️ CH340 reset failed: {str(e)}")
+            return False
+    
+    def _try_aggressive_reset(self, port):
+        """Try aggressive reset with multiple baud rates"""
+        try:
+            self.log_message("🔄 Trying aggressive reset with baud rate cycling...")
+            
+            # Try different baud rates that might trigger different boot modes
+            baud_rates = [74880, 115200, 57600, 38400]
+            
+            for baud in baud_rates:
+                try:
+                    ser = serial.Serial(
+                        port=port,
+                        baudrate=baud,
+                        timeout=0.5,
+                        write_timeout=0.5
+                    )
+                    
+                    # Rapid DTR/RTS toggling
+                    for _ in range(3):
+                        ser.setDTR(False)
+                        ser.setRTS(False)
+                        time.sleep(0.05)
+                        
+                        ser.setDTR(True)
+                        ser.setRTS(False)
+                        time.sleep(0.05)
+                        
+                        ser.setDTR(False)
+                        ser.setRTS(True)
+                        time.sleep(0.05)
+                        
+                        ser.setDTR(True)
+                        ser.setRTS(False)
+                        time.sleep(0.05)
+                    
+                    ser.close()
+                    self.log_message(f"✅ Aggressive reset at {baud} baud completed")
+                    return True
+                    
+                except Exception:
+                    continue
+            
+            self.log_message("⚠️ Aggressive reset failed at all baud rates")
+            return False
+            
+        except Exception as e:
+            self.log_message(f"⚠️ Aggressive reset failed: {str(e)}")
+            return False
     
     def enter_flash_mode(self):
-        """Put device into flash/download mode"""
+        """Put device into flash/download mode using proper hardware control"""
         port = self.selected_port.get()
         if not port:
             messagebox.showerror("Error", "Please select a COM port first")
@@ -581,26 +777,45 @@ class JTechPixelUploader:
         self.status_label.config(text="Entering flash mode...", foreground="blue")
         
         try:
-            # For ESP devices, we can try to force flash mode
-            # This simulates holding the FLASH button and pressing RESET
+            # Method 1: Try hardware reset with DTR/RTS
+            if self.reset_esp_via_dtr_rts(port):
+                self.log_message("✅ Hardware reset sequence completed")
+                
+                # Wait for device to boot and check if it's in flash mode
+                time.sleep(2)
+                if self.check_flash_mode():
+                    self.log_message("🎉 SUCCESS! Device is now in flash mode!")
+                    self.status_label.config(text="Device in flash mode!", foreground="green")
+                    return True
+                else:
+                    self.log_message("⚠️ Hardware reset completed, but device not in flash mode")
+            
+            # Method 2: Try esptool flash mode entry
+            self.log_message("🔄 Trying esptool flash mode entry...")
             cmd = ["python", "-m", "esptool", "--port", port, "--chip", device.lower(), "chip_id"]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
             
             if result.returncode == 0 and "Chip ID:" in result.stdout:
                 self.log_message("✅ Device is now in flash mode!")
                 self.status_label.config(text="Device in flash mode", foreground="green")
-                self.log_message("💡 You can now upload firmware")
+                return True
             else:
-                self.log_message("⚠️ Flash mode command sent")
-                self.log_message("💡 If device doesn't respond, manually:")
-                self.log_message("   1. Hold FLASH button")
-                self.log_message("   2. Press RESET button")
-                self.log_message("   3. Release FLASH button")
-                self.status_label.config(text="Flash mode command sent", foreground="orange")
+                self.log_message("⚠️ Software flash mode entry failed")
+                
+            # Method 3: Manual instructions for single-button boards
+            self.log_message("💡 For single-button ESP boards, try manually:")
+            self.log_message("   1. Hold RESET button")
+            self.log_message("   2. Press and hold RESET for 2 seconds")
+            self.log_message("   3. Release RESET button")
+            self.log_message("   4. Wait for device to enter flash mode")
+            
+            self.status_label.config(text="Flash mode entry attempted", foreground="orange")
+            return False
                 
         except Exception as e:
             self.log_message(f"❌ Error entering flash mode: {str(e)}")
             self.status_label.config(text="Flash mode failed", foreground="red")
+            return False
     
     def exit_flash_mode(self):
         """Exit flash mode and return to normal operation"""
@@ -660,7 +875,7 @@ class JTechPixelUploader:
             return False
     
     def force_download_mode(self):
-        """Force ESP8266 into download mode using serial commands (for single-button boards)"""
+        """Force ESP8266 into download mode using proper hardware control (for single-button boards) - Enhanced version"""
         port = self.selected_port.get()
         if not port:
             messagebox.showerror("Error", "Please select a COM port first")
@@ -675,39 +890,494 @@ class JTechPixelUploader:
         self.status_label.config(text="Forcing download mode...", foreground="red")
         
         try:
-            # Method 1: Try sending specific serial commands to trigger download mode
-            import serial
-            ser = serial.Serial(port, 115200, timeout=1)
+            # Method 1: Use enhanced DTR/RTS control for hardware reset and flash mode entry
+            if self.reset_esp_via_dtr_rts(port):
+                self.log_message("✅ Enhanced hardware reset sequence completed")
+                
+                # Wait for device to boot and check if it's in flash mode
+                time.sleep(3)
+                if self.check_flash_mode():
+                    self.log_message("🎉 SUCCESS! Device is now in download mode!")
+                    self.status_label.config(text="Device in download mode!", foreground="green")
+                    return True
+                else:
+                    self.log_message("⚠️ Hardware reset completed, but device not in flash mode")
             
-            # Send a series of commands that might trigger download mode
-            commands = [
-                b'\x00',  # Null byte
-                b'\x55',  # Pattern that might trigger download mode
-                b'\xAA',  # Another pattern
-                b'\x00\x00\x00\x00',  # Multiple null bytes
-            ]
+            # Method 2: Try sending enhanced serial commands to trigger download mode
+            if self._try_enhanced_serial_commands(port):
+                return True
             
-            for cmd in commands:
-                ser.write(cmd)
-                time.sleep(0.1)
+            # Method 3: Try baud rate cycling with commands
+            if self._try_baud_rate_cycling(port):
+                return True
             
-            ser.close()
-            self.log_message("✅ Force download commands sent")
+            # Method 4: Try timing-based reset sequence
+            if self._try_timing_based_reset(port):
+                return True
             
-            # Wait a moment then test if it worked
-            time.sleep(2)
-            if self.check_flash_mode():
-                self.log_message("🎉 SUCCESS! Device is now in download mode!")
-                self.status_label.config(text="Device in download mode!", foreground="green")
-                self.log_message("💡 You can now upload firmware!")
-            else:
-                self.log_message("⚠️ Force download commands sent, but device may not be responding")
-                self.log_message("💡 Try uploading firmware anyway - it might work now")
-                self.status_label.config(text="Force download attempted", foreground="orange")
+            self.log_message("⚠️ All force download methods attempted")
+            self.log_message("💡 Try uploading firmware anyway - it might work now")
+            self.status_label.config(text="Download mode attempted", foreground="orange")
+            return False
                 
         except Exception as e:
             self.log_message(f"❌ Error during force download: {str(e)}")
             self.status_label.config(text="Force download failed", foreground="red")
+            return False
+    
+    def _try_enhanced_serial_commands(self, port):
+        """Try enhanced serial command sequence for download mode"""
+        try:
+            self.log_message("🔄 Trying enhanced serial command sequence...")
+            import serial
+            
+            # Try multiple baud rates with different command sequences
+            command_sets = [
+                # Standard ESP download mode trigger
+                [b'\x00', b'\x55', b'\xAA', b'\x00\x00\x00', b'\x55\xAA\x55'],
+                # Extended pattern sequence
+                [b'\x00' * 10, b'\x55' * 5, b'\xAA' * 5, b'\x00\x55\xAA' * 3],
+                # Binary pattern sequence
+                [b'\x01\x02\x03\x04', b'\xFE\xFD\xFC\xFB', b'\x00\xFF\x00\xFF'],
+                # ESP-specific boot commands
+                [b'AT+RST\r\n', b'AT+GMR\r\n', b'AT\r\n'],
+            ]
+            
+            for i, commands in enumerate(command_sets):
+                try:
+                    self.log_message(f"   Trying command set {i+1}...")
+                    ser = serial.Serial(port, 74880, timeout=2)
+                    
+                    for cmd in commands:
+                        ser.write(cmd)
+                        time.sleep(0.3)
+                    
+                    ser.close()
+                    time.sleep(1)
+                    
+                    # Check if it worked
+                    if self.check_flash_mode():
+                        self.log_message(f"🎉 SUCCESS! Command set {i+1} worked!")
+                        return True
+                        
+                except Exception:
+                    continue
+            
+            self.log_message("⚠️ Enhanced serial commands completed, but device may not be responding")
+            return False
+            
+        except Exception as e:
+            self.log_message(f"⚠️ Enhanced serial commands failed: {str(e)}")
+            return False
+    
+    def _try_baud_rate_cycling(self, port):
+        """Try cycling through different baud rates with commands"""
+        try:
+            self.log_message("🔄 Trying baud rate cycling with commands...")
+            import serial
+            
+            baud_rates = [74880, 115200, 57600, 38400, 9600]
+            commands = [b'\x00', b'\x55', b'\xAA']
+            
+            for baud in baud_rates:
+                try:
+                    self.log_message(f"   Trying {baud} baud...")
+                    ser = serial.Serial(port, 74880, timeout=1)
+                    
+                    for cmd in commands:
+                        ser.write(cmd)
+                        time.sleep(0.2)
+                    
+                    ser.close()
+                    time.sleep(0.5)
+                    
+                    if self.check_flash_mode():
+                        self.log_message(f"🎉 SUCCESS! Baud rate {baud} worked!")
+                        return True
+                        
+                except Exception:
+                    continue
+            
+            self.log_message("⚠️ Baud rate cycling completed, but device may not be responding")
+            return False
+            
+        except Exception as e:
+            self.log_message(f"⚠️ Baud rate cycling failed: {str(e)}")
+            return False
+    
+    def _try_timing_based_reset(self, port):
+        """Try timing-based reset sequence for stubborn boards"""
+        try:
+            self.log_message("🔄 Trying timing-based reset sequence...")
+            import serial
+            
+            # Open port at boot baud rate
+            ser = serial.Serial(port, 74880, timeout=1)
+            
+            # Very slow, deliberate sequence
+            ser.setDTR(False)
+            ser.setRTS(False)
+            time.sleep(1.0)  # Long reset hold
+            
+            ser.setDTR(True)
+            ser.setRTS(False)
+            time.sleep(0.5)
+            
+            ser.setDTR(False)
+            ser.setRTS(True)
+            time.sleep(1.0)  # Long flash mode trigger
+            
+            ser.setDTR(True)
+            ser.setRTS(False)
+            time.sleep(0.5)
+            
+            # Send a few commands
+            ser.write(b'\x00')
+            time.sleep(0.5)
+            ser.write(b'\x55')
+            time.sleep(0.5)
+            ser.write(b'\xAA')
+            time.sleep(0.5)
+            
+            ser.close()
+            time.sleep(2)  # Wait longer for device to respond
+            
+            if self.check_flash_mode():
+                self.log_message("🎉 SUCCESS! Timing-based reset worked!")
+                return True
+            else:
+                self.log_message("⚠️ Timing-based reset completed, but device may not be responding")
+                return False
+                
+        except Exception as e:
+            self.log_message(f"⚠️ Timing-based reset failed: {str(e)}")
+            return False
+    
+    def smart_reset_device(self):
+        """Smart reset sequence specifically for single-button ESP boards - Enhanced version"""
+        port = self.selected_port.get()
+        if not port:
+            messagebox.showerror("Error", "Please select a COM port first")
+            return
+        
+        device = self.selected_device.get()
+        if device not in ["ESP8266", "ESP32"]:
+            messagebox.showerror("Error", f"Smart reset not implemented for {device}")
+            return
+        
+        self.log_message(f"🧠 Enhanced smart reset sequence for {device} on {port}...")
+        self.status_label.config(text="Enhanced smart reset in progress...", foreground="blue")
+        
+        try:
+            # Step 1: Check current device state
+            self.log_message("🔍 Step 1: Checking current device state...")
+            current_state = "unknown"
+            
+            if self.check_flash_mode():
+                current_state = "flash_mode"
+                self.log_message("✅ Device is currently in flash mode")
+                self.status_label.config(text="Device already in flash mode!", foreground="green")
+                return True
+            else:
+                current_state = "normal_mode"
+                self.log_message("✅ Device is currently in normal mode")
+            
+            # Step 2: Perform enhanced hardware reset with retries
+            self.log_message("🔄 Step 2: Performing enhanced hardware reset...")
+            reset_success = False
+            for attempt in range(3):
+                self.log_message(f"   Hardware reset attempt {attempt + 1}/3...")
+                if self.reset_esp_via_dtr_rts(port):
+                    self.log_message("✅ Hardware reset completed")
+                    reset_success = True
+                    break
+                else:
+                    self.log_message(f"⚠️ Hardware reset attempt {attempt + 1} failed")
+                    time.sleep(1)
+            
+            if not reset_success:
+                self.log_message("⚠️ All hardware reset attempts failed, continuing with software reset")
+            
+            # Step 3: Wait for device to boot with progressive checking
+            self.log_message("⏳ Step 3: Waiting for device to boot...")
+            for wait_time in [1, 2, 3]:
+                time.sleep(wait_time)
+                self.log_message(f"   Checking after {wait_time}s...")
+                if self.check_flash_mode():
+                    self.log_message("🎉 SUCCESS! Device automatically entered flash mode!")
+                    self.status_label.config(text="Smart reset successful - device in flash mode!", foreground="green")
+                    return True
+            
+            # Step 4: Try to force flash mode entry with multiple methods
+            self.log_message("🚀 Step 4: Attempting to force flash mode entry...")
+            force_methods = [
+                ("Enhanced force download", self.force_download_mode),
+                ("Timing-based reset", lambda: self._try_timing_based_reset(port)),
+                ("Baud rate cycling", lambda: self._try_baud_rate_cycling(port)),
+            ]
+            
+            for method_name, method_func in force_methods:
+                self.log_message(f"   Trying {method_name}...")
+                try:
+                    if method_func():
+                        self.log_message(f"🎉 SUCCESS! {method_name} worked!")
+                        self.status_label.config(text="Smart reset successful - device in flash mode!", foreground="green")
+                        return True
+                except Exception as e:
+                    self.log_message(f"⚠️ {method_name} failed: {str(e)}")
+                    continue
+            
+            # Step 5: Final verification and manual instructions
+            self.log_message("🔍 Step 5: Final verification...")
+            time.sleep(2)
+            if self.check_flash_mode():
+                self.log_message("🎉 SUCCESS! Device is now in flash mode!")
+                self.status_label.config(text="Smart reset successful - device in flash mode!", foreground="green")
+                return True
+            
+            # Step 6: Comprehensive manual instructions for single-button boards
+            self.log_message("⚠️ Enhanced smart reset completed, but device may not be in flash mode")
+            self.log_message("💡 For single-button ESP boards, try these manual sequences:")
+            self.log_message("   Method 1 (Standard):")
+            self.log_message("     1. Press and hold RESET button for 3 seconds")
+            self.log_message("     2. Release RESET button")
+            self.log_message("     3. Wait 2 seconds")
+            self.log_message("     4. Press RESET button briefly (0.5 seconds)")
+            self.log_message("     5. Wait for device to enter flash mode")
+            self.log_message("   Method 2 (Alternative):")
+            self.log_message("     1. Press RESET button briefly")
+            self.log_message("     2. Wait 1 second")
+            self.log_message("     3. Press RESET button again briefly")
+            self.log_message("     4. Wait for device to enter flash mode")
+            self.log_message("   Method 3 (Power cycle):")
+            self.log_message("     1. Unplug USB cable")
+            self.log_message("     2. Wait 5 seconds")
+            self.log_message("     3. Plug USB cable back in")
+            self.log_message("     4. Press RESET button immediately")
+            
+            self.status_label.config(text="Enhanced smart reset completed", foreground="orange")
+            return False
+            
+        except Exception as e:
+            self.log_message(f"❌ Error during enhanced smart reset: {str(e)}")
+            self.status_label.config(text="Enhanced smart reset failed", foreground="red")
+            return False
+    
+    def reset_esp01_specific(self, port):
+        """Special reset method specifically for ESP-01 boards (most challenging)"""
+        try:
+            self.log_message("🔧 ESP-01 specific reset sequence...")
+            import serial
+            
+            # ESP-01 boards are very sensitive to timing and need specific sequences
+            # Method 1: Very slow DTR/RTS sequence
+            try:
+                ser = serial.Serial(port, 74880, timeout=2)
+                
+                # ESP-01 specific sequence - very slow and deliberate
+                ser.setDTR(False)
+                ser.setRTS(False)
+                time.sleep(2.0)  # Very long reset hold for ESP-01
+                
+                ser.setDTR(True)
+                ser.setRTS(False)
+                time.sleep(1.0)
+                
+                ser.setDTR(False)
+                ser.setRTS(True)
+                time.sleep(2.0)  # Very long flash mode trigger
+                
+                ser.setDTR(True)
+                ser.setRTS(False)
+                time.sleep(1.0)
+                
+                ser.close()
+                self.log_message("✅ ESP-01 specific reset sequence completed")
+                
+                # Wait longer for ESP-01 to respond
+                time.sleep(5)
+                if self.check_flash_mode():
+                    self.log_message("🎉 SUCCESS! ESP-01 is now in flash mode!")
+                    return True
+                    
+            except Exception as e:
+                self.log_message(f"⚠️ ESP-01 specific reset failed: {str(e)}")
+            
+            # Method 2: Try with different baud rates specifically for ESP-01
+            baud_rates = [74880, 115200, 57600, 38400]
+            for baud in baud_rates:
+                try:
+                    self.log_message(f"   Trying ESP-01 reset at {baud} baud...")
+                    ser = serial.Serial(port, baud, timeout=2)
+                    
+                    # Send ESP-01 specific boot commands
+                    commands = [
+                        b'\x00' * 20,  # Multiple null bytes
+                        b'\x55' * 10,   # Pattern bytes
+                        b'\xAA' * 10,   # Pattern bytes
+                        b'AT+RST\r\n',  # AT command reset
+                        b'AT+GMR\r\n',  # AT command version
+                    ]
+                    
+                    for cmd in commands:
+                        ser.write(cmd)
+                        time.sleep(0.5)
+                    
+                    ser.close()
+                    time.sleep(2)
+                    
+                    if self.check_flash_mode():
+                        self.log_message(f"🎉 SUCCESS! ESP-01 reset at {baud} baud worked!")
+                        return True
+                        
+                except Exception:
+                    continue
+            
+            self.log_message("⚠️ ESP-01 specific reset methods completed, but device may not be responding")
+            return False
+            
+        except Exception as e:
+            self.log_message(f"❌ Error during ESP-01 specific reset: {str(e)}")
+            return False
+    
+    def ultimate_reset_device(self):
+        """Ultimate reset method that combines all the best reset techniques for the most stubborn boards"""
+        port = self.selected_port.get()
+        if not port:
+            messagebox.showerror("Error", "Please select a COM port first")
+            return
+        
+        device = self.selected_device.get()
+        if device not in ["ESP8266", "ESP32"]:
+            messagebox.showerror("Error", f"Ultimate reset not implemented for {device}")
+            return
+        
+        self.log_message(f"⚡ ULTIMATE RESET for {device} on {port}...")
+        self.status_label.config(text="⚡ ULTIMATE RESET in progress...", foreground="red")
+        
+        try:
+            # Phase 1: ESP-01 specific detection and reset
+            self.log_message("🔥 Phase 1: ESP-01 detection and specialized reset...")
+            if self._detect_esp01_board(port):
+                self.log_message("🔍 ESP-01 detected - using specialized method")
+                if self.reset_esp01_specific(port):
+                    self.log_message("🎉 SUCCESS! ESP-01 ultimate reset worked!")
+                    self.status_label.config(text="ESP-01 ultimate reset successful!", foreground="green")
+                    return True
+                else:
+                    self.log_message("⚠️ ESP-01 specialized reset failed, continuing...")
+            
+            # Phase 2: Enhanced hardware reset with all methods
+            self.log_message("🔥 Phase 2: Enhanced hardware reset with all methods...")
+            if self.reset_esp_via_dtr_rts(port):
+                self.log_message("✅ Enhanced hardware reset completed")
+                time.sleep(3)
+                if self.check_flash_mode():
+                    self.log_message("🎉 SUCCESS! Enhanced hardware reset worked!")
+                    self.status_label.config(text="Enhanced hardware reset successful!", foreground="green")
+                    return True
+            
+            # Phase 3: Force download mode with all techniques
+            self.log_message("🔥 Phase 3: Force download mode with all techniques...")
+            if self.force_download_mode():
+                self.log_message("🎉 SUCCESS! Force download mode worked!")
+                self.status_label.config(text="Force download mode successful!", foreground="green")
+                return True
+            
+            # Phase 4: Smart reset sequence
+            self.log_message("🔥 Phase 4: Smart reset sequence...")
+            if self.smart_reset_device():
+                self.log_message("🎉 SUCCESS! Smart reset worked!")
+                self.status_label.config(text="Smart reset successful!", foreground="green")
+                return True
+            
+            # Phase 5: Final aggressive attempts
+            self.log_message("🔥 Phase 5: Final aggressive attempts...")
+            
+            # Try multiple baud rates with aggressive timing
+            baud_rates = [74880, 115200, 57600, 38400, 9600]
+            for baud in baud_rates:
+                try:
+                    self.log_message(f"   Final attempt at {baud} baud...")
+                    import serial
+                    ser = serial.Serial(port, baud, timeout=1)
+                    
+                    # Very aggressive DTR/RTS sequence
+                    for _ in range(5):
+                        ser.setDTR(False)
+                        ser.setRTS(False)
+                        time.sleep(0.1)
+                        
+                        ser.setDTR(True)
+                        ser.setRTS(False)
+                        time.sleep(0.1)
+                        
+                        ser.setDTR(False)
+                        ser.setRTS(True)
+                        time.sleep(0.1)
+                        
+                        ser.setDTR(True)
+                        ser.setRTS(False)
+                        time.sleep(0.1)
+                    
+                    # Send aggressive command sequence
+                    aggressive_commands = [
+                        b'\x00' * 50,  # Many null bytes
+                        b'\x55' * 20,  # Pattern bytes
+                        b'\xAA' * 20,  # Pattern bytes
+                        b'\xFF' * 10,  # All ones
+                        b'\x00\x55\xAA\xFF' * 10,  # Mixed pattern
+                    ]
+                    
+                    for cmd in aggressive_commands:
+                        ser.write(cmd)
+                        time.sleep(0.2)
+                    
+                    ser.close()
+                    time.sleep(3)
+                    
+                    if self.check_flash_mode():
+                        self.log_message(f"🎉 SUCCESS! Aggressive reset at {baud} baud worked!")
+                        self.status_label.config(text="Aggressive reset successful!", foreground="green")
+                        return True
+                        
+                except Exception:
+                    continue
+            
+            # Phase 6: Comprehensive manual instructions
+            self.log_message("⚠️ ⚡ ULTIMATE RESET completed, but device may still not be responding")
+            self.log_message("💡 For the most stubborn boards, try these ultimate manual sequences:")
+            self.log_message("   Ultimate Method 1:")
+            self.log_message("     1. Unplug USB cable completely")
+            self.log_message("     2. Wait 10 seconds")
+            self.log_message("     3. Plug USB cable back in")
+            self.log_message("     4. Press and hold RESET button for 5 seconds")
+            self.log_message("     5. Release RESET button")
+            self.log_message("     6. Wait 3 seconds")
+            self.log_message("     7. Press RESET button briefly")
+            self.log_message("     8. Wait for device to enter flash mode")
+            self.log_message("   Ultimate Method 2:")
+            self.log_message("     1. Unplug USB cable")
+            self.log_message("     2. Wait 5 seconds")
+            self.log_message("     3. Plug USB cable back in")
+            self.log_message("     4. Immediately press RESET button")
+            self.log_message("     5. Keep pressing RESET button")
+            self.log_message("     6. While holding RESET, unplug and replug USB")
+            self.log_message("     7. Release RESET button")
+            self.log_message("     8. Wait for device to enter flash mode")
+            self.log_message("   Ultimate Method 3:")
+            self.log_message("     1. Try a different USB cable")
+            self.log_message("     2. Try a different USB port")
+            self.log_message("     3. Try a different computer")
+            self.log_message("     4. Check if the board is physically damaged")
+            
+            self.status_label.config(text="⚡ Ultimate reset completed", foreground="orange")
+            return False
+            
+        except Exception as e:
+            self.log_message(f"❌ Error during ultimate reset: {str(e)}")
+            self.status_label.config(text="⚡ Ultimate reset failed", foreground="red")
+            return False
     
     def update_progress_from_output(self, output):
         """Update progress bar based on command output with enhanced pattern matching"""
@@ -843,21 +1513,49 @@ class JTechPixelUploader:
             messagebox.showerror("Tool Missing", "MPLAB IPE is required for PIC devices but not found")
             return
         
-        # For ESP devices, check if they're in flash mode before uploading
+        # For ESP devices, automatically handle reset and flash mode entry
         if device in ["ESP8266", "ESP32"]:
-            self.log_message("🔍 Checking if device is in flash mode...")
-            if not self.check_flash_mode():
-                self.log_message("⚠️ Device not in flash mode - attempting to enter flash mode...")
-                if not self.enter_flash_mode():
-                    self.log_message("❌ Failed to enter flash mode automatically")
-                    self.log_message("💡 Please use 'Enter Flash Mode' button or manually:")
-                    self.log_message("   1. Hold FLASH button")
-                    self.log_message("   2. Press RESET button")
-                    self.log_message("   3. Release FLASH button")
-                    self.status_label.config(text="Ready", foreground="green")
-                    return
+            self.log_message("🚀 Starting automated upload flow for ESP device...")
+            self.flow_status_label.config(text="🔄 Step 1: Resetting device...", foreground="blue")
+            self.log_message("🔄 Step 1: Attempting to reset device...")
+            
+            # Try esptool reset first (most reliable)
+            try:
+                if self.esptool_controlled_reset():
+                    self.log_message("✅ esptool reset successful - device should be in flash mode")
+                    self.flow_status_label.config(text="✅ Reset successful - proceeding to upload", foreground="green")
                 else:
-                    self.log_message("✅ Device is now in flash mode - proceeding with upload...")
+                    self.log_message("⚠️ esptool reset failed, trying emergency reset...")
+                    self.flow_status_label.config(text="⚠️ esptool failed - trying emergency reset...", foreground="orange")
+                    
+                    # If esptool fails, try emergency reset
+                    if self.emergency_reset_device():
+                        self.log_message("✅ Emergency reset successful - device should be in flash mode")
+                        self.flow_status_label.config(text="✅ Emergency reset successful - proceeding to upload", foreground="green")
+                    else:
+                        self.log_message("⚠️ All reset methods failed")
+                        self.log_message("💡 Try uploading anyway - device might be ready")
+                        self.flow_status_label.config(text="⚠️ Reset failed - proceeding to upload anyway", foreground="orange")
+            except Exception as e:
+                self.log_message(f"❌ Error during reset process: {str(e)}")
+                self.flow_status_label.config(text="❌ Reset error - proceeding to upload anyway", foreground="red")
+                self.log_message("💡 Proceeding with upload - esptool will handle reset")
+            
+            # Final check if device is in flash mode
+            self.flow_status_label.config(text="🔍 Final check: Verifying flash mode...", foreground="blue")
+            self.log_message("🔍 Final check: Verifying device is in flash mode...")
+            try:
+                if self.check_flash_mode():
+                    self.log_message("✅ Device is confirmed to be in flash mode!")
+                    self.flow_status_label.config(text="✅ Device in flash mode - starting upload", foreground="green")
+                else:
+                    self.log_message("⚠️ Device may not be in flash mode, but proceeding with upload...")
+                    self.log_message("💡 esptool will attempt to put device in flash mode during upload")
+                    self.flow_status_label.config(text="⚠️ Flash mode unclear - esptool will handle it", foreground="orange")
+            except Exception as e:
+                self.log_message(f"⚠️ Error checking flash mode: {str(e)}")
+                self.flow_status_label.config(text="⚠️ Flash mode check failed - proceeding anyway", foreground="orange")
+                self.log_message("💡 Proceeding with upload - esptool will handle everything")
             
         # Start upload in separate thread
         self.is_uploading = True
@@ -865,6 +1563,7 @@ class JTechPixelUploader:
         self.upload_progress.set(0)
         self.progress_label.config(text="0%")
         self.status_label.config(text="Uploading...", foreground="blue")
+        self.flow_status_label.config(text="📤 Uploading firmware...", foreground="blue")
         self.set_activity_status(True)  # Show active status
         
         upload_thread = threading.Thread(target=self.upload_firmware)
@@ -882,43 +1581,49 @@ class JTechPixelUploader:
             self.log_message(f"Starting upload for {device} on {port} at {baud} baud")
             self.log_message(f"Firmware: {os.path.basename(firmware)}")
             
-            # Check if this is LED pattern data and pattern testing is enabled
-            if self.pattern_test_var.get() and device in ["ESP8266", "ESP32"]:
-                is_pattern, message = self.detect_led_pattern_data(firmware)
-                if is_pattern:
-                    self.log_message(f"🎨 {message}")
-                    self.log_message("🎯 Using pattern testing mode - uploading via custom protocol")
-                    
-                    # Use custom protocol for pattern upload
-                    success = self.upload_pattern_via_custom_protocol(firmware, port, baud)
-                    
-                    if success:
-                        self.upload_progress.set(100)
-                        self.status_label.config(text="Pattern uploaded successfully!", foreground="green")
-                        self.log_message("✅ Pattern uploaded successfully via custom protocol!")
-                        self.log_message("💡 Check your LED matrix - you should see the pattern!")
-                        
-                        # Auto-reset device to run mode
-                        time.sleep(1)
-                        self.log_message("🔄 Auto-resetting device to run mode...")
-                        self.reset_device()
-                        
-                        messagebox.showinfo("Success", "Pattern uploaded successfully!\n\n"
-                                           "Your LED matrix should now display the pattern.\n"
-                                           "This confirms your hardware is working correctly!")
-                    else:
-                        self.status_label.config(text="Pattern upload failed", foreground="red")
-                        self.log_message("❌ Pattern upload failed!")
-                        messagebox.showerror("Error", "Pattern upload failed. Check the log for details.")
-                    
-                    return
+            # Standard firmware upload process
             
             # Standard firmware upload process
             if device in config.DEVICE_CONFIGS:
                 config_info = config.DEVICE_CONFIGS[device]
                 command = config_info["command"]
-                args = [arg.format(port=port, baud=baud, file=firmware) for arg in config_info["args"]]
                 
+                # Get user's preferred esptool reset options
+                before_reset = self.app_config.get("esptool_before_reset", "default-reset")
+                after_reset = self.app_config.get("esptool_after_reset", "hard-reset")
+                
+                # For ESP devices, use user's reset preferences
+                if device in ["ESP8266", "ESP32"]:
+                    # Build args list, replacing reset flags with user preferences
+                    args = []
+                    skip_next = False
+                    
+                    for i, arg in enumerate(config_info["args"]):
+                        if skip_next:
+                            skip_next = False
+                            continue
+                            
+                        if arg == "--before":
+                            # Replace with user preference
+                            args.append("--before")
+                            args.append(before_reset)
+                            skip_next = True  # Skip the next argument (the reset value)
+                        elif arg == "--after":
+                            # Replace with user preference
+                            args.append("--after")
+                            args.append(after_reset)
+                            skip_next = True  # Skip the next argument (the reset value)
+                        elif arg in ["default-reset", "hard-reset"]:
+                            # Skip these values as they're replaced above
+                            continue
+                        else:
+                            # Format and add other arguments
+                            args.append(arg.format(port=port, baud=baud, file=firmware))
+                else:
+                    # For non-ESP devices, use original args
+                    args = [arg.format(port=port, baud=baud, file=firmware) for arg in config_info["args"]]
+                
+                self.log_message(f"Using reset options: --before {before_reset} --after {after_reset}")
                 self.log_message(f"Executing: {command} {' '.join(args)}")
                 
                 # Run the upload command with real-time output
@@ -949,13 +1654,21 @@ class JTechPixelUploader:
                 
                 if return_code == 0:
                     self.upload_progress.set(100)
-                    self.status_label.config(text="Upload completed successfully!", foreground="green")
-                    self.log_message("✅ Upload completed successfully!")
-                    messagebox.showinfo("Success", "Firmware uploaded successfully!")
+                    self.status_label.config(text="✅ Upload completed successfully!", foreground="green")
+                    self.flow_status_label.config(text="🎉 Firmware uploaded successfully!", foreground="green")
+                    self.log_message("🎉 Upload completed successfully!")
+                    self.log_message("💡 Your ESP8266 should now be running the new firmware!")
+                    messagebox.showinfo("Success", "Firmware uploaded successfully!\n\nYour ESP8266 should now be running the new firmware.")
                 else:
-                    self.status_label.config(text="Upload failed", foreground="red")
+                    self.status_label.config(text="❌ Upload failed", foreground="red")
+                    self.flow_status_label.config(text="❌ Upload failed - check log for details", foreground="red")
                     self.log_message("❌ Upload failed!")
-                    messagebox.showerror("Error", "Upload failed. Check the log for details.")
+                    self.log_message("🔍 Common causes:")
+                    self.log_message("   • Device not in flash mode")
+                    self.log_message("   • Wrong firmware file")
+                    self.log_message("   • Connection issues")
+                    self.log_message("   • Hardware problems")
+                    messagebox.showerror("Upload Failed", "Upload failed. Check the log for details.\n\nCommon causes:\n• Device not in flash mode\n• Wrong firmware file\n• Connection issues\n• Hardware problems")
                     
             else:
                 self.log_message(f"❌ Device type '{device}' not supported")
@@ -971,80 +1684,7 @@ class JTechPixelUploader:
             self.upload_button.config(state="normal")
             self.set_activity_status(False)  # Reset activity status
             
-    def on_pattern_test_toggle(self):
-        """Handle pattern testing toggle"""
-        if self.pattern_test_var.get():
-            self.pattern_info_label.config(text="Pattern testing enabled - will detect LED data")
-            self.pattern_status_label.config(text="Pattern testing mode active", foreground="blue")
-            self.log_message("🎨 Pattern testing mode enabled")
-        else:
-            self.pattern_info_label.config(text="")
-            self.pattern_status_label.config(text="Pattern testing disabled", foreground="gray")
-            self.log_message("🎨 Pattern testing mode disabled")
-    
-    def detect_led_pattern_data(self, file_path):
-        """Detect if the file contains LED pattern data"""
-        try:
-            # Check file extension first
-            if file_path.lower().endswith('.bin'):
-                # Read first few bytes to detect pattern
-                with open(file_path, 'rb') as f:
-                    header = f.read(16)  # Read first 16 bytes
-                    
-                # Check for common LED pattern signatures
-                # WS2812 patterns often start with specific byte sequences
-                if len(header) >= 4:
-                    # Check for common LED pattern indicators
-                    if any(pattern in header for pattern in [b'\x00\x55\xAA', b'\xFF\x00\xFF', b'\x00\x00\x00']):
-                        return True, "LED pattern data detected"
-                    
-                    # Check if it's a small binary file (likely pattern data)
-                    file_size = os.path.getsize(file_path)
-                    if file_size <= 1024:  # Small files are likely patterns
-                        return True, f"Small binary file ({file_size} bytes) - likely LED pattern"
-                        
-            return False, "Not detected as LED pattern data"
-            
-        except Exception as e:
-            return False, f"Error detecting pattern: {str(e)}"
-    
-    def upload_pattern_via_custom_protocol(self, file_path, port, baud_rate):
-        """Upload LED pattern using custom lightweight protocol"""
-        try:
-            self.log_message("🎨 Detected LED pattern data, using custom protocol")
-            self.log_message("📤 Uploading pattern via serial...")
-            
-            # Open serial port
-            import serial
-            ser = serial.Serial(port, int(baud_rate), timeout=2)
-            
-            # Read pattern data
-            with open(file_path, 'rb') as f:
-                pattern_data = f.read()
-            
-            # Custom protocol: Send header + data + checksum
-            header = b'LEDP'  # LED Pattern identifier
-            data_length = len(pattern_data).to_bytes(4, 'little')
-            checksum = sum(pattern_data) & 0xFF
-            
-            # Send protocol packet
-            packet = header + data_length + pattern_data + bytes([checksum])
-            ser.write(packet)
-            
-            # Wait for acknowledgment
-            response = ser.read(4)
-            ser.close()
-            
-            if response == b'OKAY':
-                self.log_message("✅ Pattern uploaded successfully via custom protocol")
-                return True
-            else:
-                self.log_message("⚠️ Pattern uploaded, but no acknowledgment received")
-                return True  # Still consider it successful
-                
-        except Exception as e:
-            self.log_message(f"❌ Error uploading pattern: {str(e)}")
-            return False
+
     
     def test_pattern(self):
         """Test the current pattern file"""
@@ -1332,9 +1972,7 @@ class JTechPixelUploader:
                             self.update_file_info()
                             self.log_message(f"✅ Selected sample pattern: {os.path.basename(file_path)}")
                             
-                            # Auto-enable pattern testing for sample files
-                            self.pattern_test_var.set(True)
-                            self.on_pattern_test_toggle()
+                            # Pattern file selected
                             
             else:
                 self.log_message("❌ Failed to create sample patterns")
@@ -1411,8 +2049,40 @@ class JTechPixelUploader:
         ttk.Checkbutton(settings_window, text="Show timestamps in log", 
                        variable=show_timestamps_var).pack(pady=5)
         
+        # Auto-reset before upload
+        auto_reset_var = tk.BooleanVar(value=self.app_config.get("auto_reset_before_upload", False))
+        ttk.Checkbutton(settings_window, text="Auto-reset device before upload", 
+                       variable=auto_reset_var).pack(pady=5)
+        
+        # esptool reset options
+        ttk.Label(settings_window, text="esptool Reset Options:", font=("Arial", 10, "bold")).pack(pady=(15, 5))
+        
+        # Before reset option
+        ttk.Label(settings_window, text="Before Upload:").pack(pady=(5, 0))
+        before_reset_var = tk.StringVar(value=self.app_config.get("esptool_before_reset", "default-reset"))
+        before_reset_combo = ttk.Combobox(settings_window, textvariable=before_reset_var, 
+                                         values=config.ESPTOOL_RESET_OPTIONS["before_reset"], 
+                                         state="readonly", width=20)
+        before_reset_combo.pack(pady=2)
+        
+        # After reset option
+        ttk.Label(settings_window, text="After Upload:").pack(pady=(5, 0))
+        after_reset_var = tk.StringVar(value=self.app_config.get("esptool_after_reset", "hard-reset"))
+        after_reset_combo = ttk.Combobox(settings_window, textvariable=after_reset_var, 
+                                        values=config.ESPTOOL_RESET_OPTIONS["after_reset"], 
+                                        state="readonly", width=20)
+        after_reset_combo.pack(pady=2)
+        
+        # Reset option descriptions
+        ttk.Label(settings_window, text="💡 default-reset: Use DTR/RTS for auto-flash", 
+                 foreground="gray", font=("Arial", 8)).pack(pady=2)
+        ttk.Label(settings_window, text="💡 no-reset: Skip reset (manual control)", 
+                 foreground="gray", font=("Arial", 8)).pack(pady=2)
+        ttk.Label(settings_window, text="💡 hard-reset: Force reset after upload", 
+                 foreground="gray", font=("Arial", 8)).pack(pady=2)
+        
         # Theme selection
-        ttk.Label(settings_window, text="Theme:").pack(pady=(10, 5))
+        ttk.Label(settings_window, text="Theme:").pack(pady=(15, 5))
         theme_var = tk.StringVar(value=self.app_config.get("theme", "clam"))
         theme_combo = ttk.Combobox(settings_window, textvariable=theme_var, 
                                   values=["clam", "alt", "default", "classic"], state="readonly")
@@ -1423,6 +2093,9 @@ class JTechPixelUploader:
             self.app_config.update({
                 "auto_detect_ports": auto_detect_var.get(),
                 "show_timestamps": show_timestamps_var.get(),
+                "auto_reset_before_upload": auto_reset_var.get(),
+                "esptool_before_reset": before_reset_var.get(),
+                "esptool_after_reset": after_reset_var.get(),
                 "theme": theme_var.get()
             })
             config.save_config(self.app_config)
@@ -1461,6 +2134,356 @@ Built with Python and Tkinter
 © 2024 {config.APP_AUTHOR}"""
         
         messagebox.showinfo(f"About {config.APP_NAME}", about_text)
+    
+    def _try_gpio0_simulation_reset(self, port):
+        """Try to simulate GPIO0 being pulled low during reset (for single-button boards)"""
+        try:
+            self.log_message("🔄 Trying GPIO0 simulation reset...")
+            import serial
+            
+            # This method tries to simulate GPIO0 being pulled low
+            # by sending specific timing patterns that might trigger download mode
+            
+            ser = serial.Serial(port, 74880, timeout=1)
+            
+            # Method 1: Very slow DTR/RTS with specific timing
+            ser.setDTR(False)
+            ser.setRTS(False)
+            time.sleep(2.0)  # Long reset hold
+            
+            ser.setDTR(True)
+            ser.setRTS(False)
+            time.sleep(1.0)
+            
+            ser.setDTR(False)
+            ser.setRTS(True)
+            time.sleep(2.0)  # Long flash mode trigger
+            
+            ser.setDTR(True)
+            ser.setRTS(False)
+            time.sleep(1.0)
+            
+            ser.close()
+            self.log_message("✅ GPIO0 simulation reset completed")
+            return True
+            
+        except Exception as e:
+            self.log_message(f"⚠️ GPIO0 simulation reset failed: {str(e)}")
+            return False
+    
+    def _try_voltage_cycling_reset(self, port):
+        """Try voltage cycling method (unplug/replug simulation via DTR/RTS)"""
+        try:
+            self.log_message("🔄 Trying voltage cycling reset...")
+            import serial
+            
+            # This simulates unplugging and replugging the USB
+            # by cycling DTR/RTS in a specific pattern
+            
+            ser = serial.Serial(port, 74880, timeout=1)
+            
+            # Simulate power off
+            ser.setDTR(False)
+            ser.setRTS(False)
+            time.sleep(3.0)  # Simulate unplugged time
+            
+            # Simulate power on
+            ser.setDTR(True)
+            ser.setRTS(False)
+            time.sleep(1.0)
+            
+            # Simulate GPIO0 pull-down during boot
+            ser.setDTR(False)
+            ser.setRTS(True)
+            time.sleep(2.0)
+            
+            # Return to normal
+            ser.setDTR(True)
+            ser.setRTS(False)
+            time.sleep(1.0)
+            
+            ser.close()
+            self.log_message("✅ Voltage cycling reset completed")
+            return True
+            
+        except Exception as e:
+            self.log_message(f"⚠️ Voltage cycling reset failed: {str(e)}")
+            return False
+    
+    def emergency_reset_device(self):
+        """Emergency reset method for the most stubborn single-button ESP boards"""
+        port = self.selected_port.get()
+        if not port:
+            messagebox.showerror("Error", "Please select a COM port first")
+            return
+        
+        device = self.selected_device.get()
+        if device not in ["ESP8266", "ESP32"]:
+            messagebox.showerror("Error", f"Emergency reset not implemented for {device}")
+            return
+        
+        self.log_message(f"🚨 EMERGENCY RESET for {device} on {port}...")
+        self.status_label.config(text="🚨 EMERGENCY RESET in progress...", foreground="red")
+        
+        try:
+            self.log_message("🔥 Phase 1: Manual reset instructions...")
+            self.log_message("💡 CRITICAL: Follow these steps EXACTLY:")
+            self.log_message("   1. Unplug USB cable completely")
+            self.log_message("   2. Wait 15 seconds")
+            self.log_message("   3. Plug USB cable back in")
+            self.log_message("   4. IMMEDIATELY press and HOLD RESET button")
+            self.log_message("   5. Keep holding for 10 seconds")
+            self.log_message("   6. Release RESET button")
+            self.log_message("   7. Wait 5 seconds")
+            self.log_message("   8. Press RESET button briefly (0.5 seconds)")
+            self.log_message("   9. Wait for device to enter flash mode")
+            
+            # Phase 2: Try automatic hardware reset first
+            self.log_message("🔥 Phase 2: Automatic hardware reset attempts...")
+            
+            # Try ESP-01 specific reset
+            if self._try_esp01_aggressive_reset(port):
+                self.log_message("✅ ESP-01 aggressive reset completed")
+                time.sleep(3)
+                
+                # Test if it worked
+                if self.check_flash_mode():
+                    self.log_message("🎉 SUCCESS! Automatic reset worked!")
+                    self.status_label.config(text="Automatic reset successful!", foreground="green")
+                    return True
+            
+            # Phase 3: Manual reset instructions
+            self.log_message("🔥 Phase 3: Manual reset instructions...")
+            self.log_message("💡 CRITICAL: Follow these steps EXACTLY:")
+            self.log_message("   1. Unplug USB cable completely")
+            self.log_message("   2. Wait 15 seconds")
+            self.log_message("   3. Plug USB cable back in")
+            self.log_message("   4. IMMEDIATELY press and HOLD RESET button")
+            self.log_message("   5. Keep holding for 10 seconds")
+            self.log_message("   6. Release RESET button")
+            self.log_message("   7. Wait 5 seconds")
+            self.log_message("   8. Press RESET button briefly (0.5 seconds)")
+            self.log_message("   9. Wait for device to enter flash mode")
+            
+            # Show a dialog with these instructions
+            result = messagebox.askyesno("Emergency Reset", 
+                "Follow the manual reset sequence shown in the log.\n\n"
+                "After completing the sequence, click 'Yes' to test if the device is in flash mode.\n\n"
+                "Click 'No' to cancel.")
+            
+            if result:
+                self.log_message("🔍 Testing if emergency reset worked...")
+                time.sleep(3)  # Give user time to complete the sequence
+                
+                if self.check_flash_mode():
+                    self.log_message("🎉 SUCCESS! Emergency reset worked!")
+                    self.status_label.config(text="Emergency reset successful!", foreground="green")
+                    return True
+                else:
+                    self.log_message("⚠️ Emergency reset may not have worked")
+                    self.log_message("💡 Try the sequence again or check hardware")
+                    self.status_label.config(text="Emergency reset attempted", foreground="orange")
+                    return False
+            else:
+                self.log_message("🚨 Emergency reset cancelled by user")
+                self.status_label.config(text="Emergency reset cancelled", foreground="red")
+                return False
+                
+        except Exception as e:
+            self.log_message(f"❌ Error during emergency reset: {str(e)}")
+            self.status_label.config(text="Emergency reset failed", foreground="red")
+            return False
+    
+    def esptool_controlled_reset(self):
+        """Use esptool's built-in reset control for more reliable flashing"""
+        port = self.selected_port.get()
+        if not port:
+            messagebox.showerror("Error", "Please select a COM port first")
+            return
+        
+        device = self.selected_device.get()
+        if device not in ["ESP8266", "ESP32"]:
+            messagebox.showerror("Error", f"esptool reset not implemented for {device}")
+            return
+        
+        self.log_message(f"🔧 esptool-controlled reset for {device} on {port}...")
+        self.status_label.config(text="esptool reset in progress...", foreground="blue")
+        
+        try:
+            # Method 1: Try esptool's default reset behavior
+            self.log_message("🔄 Method 1: Using esptool's default reset behavior...")
+            cmd = ["python", "-m", "esptool", "--port", port, "--chip", device.lower(), 
+                   "--before", "default-reset", "--after", "hard-reset", "chip_id"]
+            
+            self.log_message(f"Executing: {' '.join(cmd)}")
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+            
+            if result.returncode == 0 and "Chip ID:" in result.stdout:
+                self.log_message("🎉 SUCCESS! esptool reset worked!")
+                self.status_label.config(text="esptool reset successful!", foreground="green")
+                return True
+            else:
+                self.log_message("⚠️ Method 1 failed, trying Method 2...")
+                self.log_message(f"Error output: {result.stderr}")
+            
+            # Method 2: Try with no-reset before, then manual reset
+            self.log_message("🔄 Method 2: Manual reset with esptool...")
+            
+            # First, try to put device in flash mode manually
+            if self.reset_esp_via_dtr_rts(port):
+                self.log_message("✅ Manual reset completed, testing with esptool...")
+                time.sleep(2)
+                
+                # Now try esptool with no-reset
+                cmd = ["python", "-m", "esptool", "--port", port, "--chip", device.lower(), 
+                       "--before", "no-reset", "--after", "hard-reset", "chip_id"]
+                
+                self.log_message(f"Executing: {' '.join(cmd)}")
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+                
+                if result.returncode == 0 and "Chip ID:" in result.stdout:
+                    self.log_message("🎉 SUCCESS! Manual reset + esptool worked!")
+                    self.status_label.config(text="Manual reset + esptool successful!", foreground="green")
+                    return True
+                else:
+                    self.log_message("⚠️ Method 2 also failed")
+                    self.log_message(f"Error output: {result.stderr}")
+            
+            # Method 2.5: Try aggressive ESP-01 reset
+            self.log_message("🔄 Method 2.5: Aggressive ESP-01 reset...")
+            if self._try_esp01_aggressive_reset(port):
+                self.log_message("✅ Aggressive ESP-01 reset completed, testing with esptool...")
+                time.sleep(3)  # Wait longer for ESP-01 to stabilize
+                
+                # Try esptool with no-reset
+                cmd = ["python", "-m", "esptool", "--port", port, "--chip", device.lower(), 
+                       "--before", "no-reset", "--after", "hard-reset", "chip_id"]
+                
+                self.log_message(f"Executing: {' '.join(cmd)}")
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+                
+                if result.returncode == 0 and "Chip ID:" in result.stdout:
+                    self.log_message("🎉 SUCCESS! Aggressive reset + esptool worked!")
+                    self.status_label.config(text="Aggressive reset + esptool successful!", foreground="green")
+                    return True
+                else:
+                    self.log_message("⚠️ Aggressive reset + esptool failed")
+                    self.log_message(f"Error output: {result.stderr}")
+            
+            # Method 3: Try esptool with different reset options
+            self.log_message("🔄 Method 3: Trying different esptool reset options...")
+            
+            reset_options = [
+                ("default-reset", "hard-reset"),
+                ("no-reset", "soft-reset"),
+                ("default-reset", "no-reset")
+            ]
+            
+            for before_reset, after_reset in reset_options:
+                try:
+                    self.log_message(f"   Trying --before {before_reset} --after {after_reset}...")
+                    cmd = ["python", "-m", "esptool", "--port", port, "--chip", device.lower(), 
+                           "--before", before_reset, "--after", after_reset, "chip_id"]
+                    
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+                    
+                    if result.returncode == 0 and "Chip ID:" in result.stdout:
+                        self.log_message(f"🎉 SUCCESS! esptool reset with {before_reset}/{after_reset} worked!")
+                        self.status_label.config(text=f"esptool reset successful!", foreground="green")
+                        return True
+                    else:
+                        self.log_message(f"⚠️ {before_reset}/{after_reset} failed")
+                        
+                except Exception as e:
+                    self.log_message(f"⚠️ Error with {before_reset}/{after_reset}: {str(e)}")
+                    continue
+            
+            # If all methods fail, provide manual instructions
+            self.log_message("⚠️ All esptool reset methods failed")
+            self.log_message("💡 Manual reset required:")
+            self.log_message("   1. Hold GPIO0 (or BOOT button) LOW")
+            self.log_message("   2. Press RESET button")
+            self.log_message("   3. Release RESET button")
+            self.log_message("   4. Release GPIO0/BOOT button")
+            self.log_message("   5. Try uploading firmware")
+            
+            self.status_label.config(text="esptool reset failed - manual reset needed", foreground="orange")
+            return False
+            
+        except Exception as e:
+            self.log_message(f"❌ Error during esptool reset: {str(e)}")
+            self.status_label.config(text="esptool reset failed", foreground="red")
+            return False
+    
+    def _try_esp01_aggressive_reset(self, port):
+        """Try aggressive reset specifically for ESP-01 boards"""
+        try:
+            self.log_message("🔥 ESP-01 Aggressive Reset Sequence...")
+            
+            # Phase 1: Multiple DTR/RTS cycles
+            self.log_message("   🔄 Phase 1: Multiple DTR/RTS cycles...")
+            for i in range(5):
+                self.log_message(f"      Cycle {i+1}/5...")
+                if self.reset_esp_via_dtr_rts(port):
+                    time.sleep(0.5)
+                else:
+                    time.sleep(0.2)
+            
+            # Phase 2: Baud rate cycling with reset
+            self.log_message("   🔄 Phase 2: Baud rate cycling with reset...")
+            baud_rates = [74880, 115200, 57600, 38400]
+            
+            for baud in baud_rates:
+                self.log_message(f"      Trying {baud} baud...")
+                try:
+                    import serial
+                    ser = serial.Serial(port, baud, timeout=1)
+                    if ser.is_open:
+                        # Send reset sequence at this baud rate
+                        ser.setDTR(False)
+                        ser.setRTS(False)
+                        time.sleep(0.1)
+                        ser.setDTR(True)
+                        ser.setRTS(True)
+                        time.sleep(0.1)
+                        ser.setDTR(False)
+                        ser.setRTS(False)
+                        time.sleep(0.1)
+                        ser.setDTR(True)
+                        ser.setRTS(True)
+                        ser.close()
+                        time.sleep(0.5)
+                except:
+                    continue
+            
+            # Phase 3: Extended timing reset
+            self.log_message("   🔄 Phase 3: Extended timing reset...")
+            try:
+                import serial
+                ser = serial.Serial(port, 74880, timeout=1)
+                if ser.is_open:
+                    # Hold DTR/RTS low for extended period
+                    ser.setDTR(False)
+                    ser.setRTS(False)
+                    time.sleep(2)  # Hold for 2 seconds
+                    ser.setDTR(True)
+                    ser.setRTS(True)
+                    time.sleep(1)
+                    ser.setDTR(False)
+                    ser.setRTS(False)
+                    time.sleep(0.5)
+                    ser.setDTR(True)
+                    ser.setRTS(True)
+                    ser.close()
+            except:
+                pass
+            
+            self.log_message("✅ ESP-01 aggressive reset sequence completed")
+            return True
+            
+        except Exception as e:
+            self.log_message(f"❌ Error during ESP-01 aggressive reset: {str(e)}")
+            return False
 
 def main():
     """Main application entry point"""

@@ -1,42 +1,28 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-block_cipher = None
 
 a = Analysis(
     ['j_tech_pixel_uploader.py'],
     pathex=[],
     binaries=[],
-    datas=[],
-    hiddenimports=[
-        'serial',
-        'serial.tools',
-        'serial.tools.list_ports',
-        'esptool',
-        'tkinter',
-        'tkinter.ttk',
-        'tkinter.filedialog',
-        'tkinter.messagebox'
-    ],
+    datas=[('config.py', '.'), ('utils.py', '.')],
+    hiddenimports=['serial', 'serial.tools', 'tkinter', 'tkinter.ttk', 'tkinter.messagebox', 'tkinter.filedialog', 'datetime', 'threading', 'subprocess', 'os', 'time', 'json', 'math'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
     noarchive=False,
+    optimize=0,
 )
-
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
     a.scripts,
     a.binaries,
-    a.zipfiles,
     a.datas,
     [],
-    name='J Tech Pixel Uploader',
+    name='J_Tech_Pixel_Uploader',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -49,8 +35,4 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,  # Add your icon file here if you have one
-    version_file=None,
-    uac_admin=False,
-    uac_uiaccess=False,
 )
