@@ -34,7 +34,7 @@ def build_executable():
         "--hidden-import=json",         # Include json
         "--hidden-import=math",         # Include math
         "--clean",                       # Clean build cache
-        "j_tech_pixel_uploader.py"     # Main script
+        "main.py"                       # Main script
     ]
     
     # Remove icon if not available

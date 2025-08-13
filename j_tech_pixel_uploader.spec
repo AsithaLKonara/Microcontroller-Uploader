@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['j_tech_pixel_uploader.py'],
+    ['main.py'],
     pathex=[],
     binaries=[],
     datas=[('config.py', '.'), ('utils.py', '.')],
