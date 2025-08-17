@@ -285,11 +285,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🔄 Changelog
 
 ### Version 2.0.0 (Current)
-- ✨ Complete UI overhaul with modern design
+- ✨ Complete UI overhaul with modern 2-column design
 - 🎨 Advanced LED pattern preview and management
 - 🚀 Enhanced error handling and progress tracking
 - 📊 Comprehensive monitoring and debugging tools
 - 🎯 Professional-grade interface and user experience
+- 📱 Left column: All controls and configuration
+- 📝 Right column: Large upload log for better visibility
 
 ### Version 1.0.0
 - 🚀 Initial release with basic upload functionality

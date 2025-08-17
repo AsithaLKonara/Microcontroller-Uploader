@@ -5,7 +5,10 @@ import os
 import subprocess
 import platform
 import shutil
+import hashlib
+import tempfile
 from typing import List, Dict, Optional, Tuple
+from pathlib import Path
 
 def check_command_available(command: str) -> bool:
     """Check if a command is available in the system PATH"""
@@ -82,14 +85,132 @@ def find_mplab_ipe() -> Optional[str]:
     
     return None
 
+def find_hex_converter() -> Optional[str]:
+    """Find a HEX to BIN converter tool"""
+    # Try srec_cat first (most reliable)
+    if check_command_available("srec_cat"):
+        return "srec_cat"
+    
+    # Try objcopy as fallback
+    if check_command_available("objcopy"):
+        return "objcopy"
+    
+    # Try hex2bin
+    if check_command_available("hex2bin"):
+        return "hex2bin"
+    
+    return None
+
+def find_fs_builder() -> Optional[str]:
+    """Find a file system image builder"""
+    # Try mkspiffs first
+    if check_command_available("mkspiffs"):
+        return "mkspiffs"
+    
+    # Try mklittlefs as fallback
+    if check_command_available("mklittlefs"):
+        return "mklittlefs"
+    
+    return None
+
 def get_available_tools() -> Dict[str, bool]:
     """Get a dictionary of available flashing tools"""
     return {
         "esptool": find_esptool() is not None,
         "avrdude": find_avrdude() is not None,
         "stm32flash": find_stm32flash() is not None,
-        "mplab_ipe": find_mplab_ipe() is not None
+        "mplab_ipe": find_mplab_ipe() is not None,
+        "hex_converter": find_hex_converter() is not None,
+        "fs_builder": find_fs_builder() is not None
     }
+
+def convert_hex_to_bin(hex_file_path: str) -> Tuple[bool, str, str]:
+    """
+    Convert HEX file to BIN format
+    Returns: (success, output_path, error_message)
+    """
+    try:
+        if not os.path.exists(hex_file_path):
+            return False, "", "HEX file does not exist"
+        
+        # Find converter tool
+        converter = find_hex_converter()
+        if not converter:
+            return False, "", "No HEX to BIN converter found. Install srec_cat, objcopy, or hex2bin"
+        
+        # Create output path
+        output_path = os.path.splitext(hex_file_path)[0] + ".bin"
+        
+        # Run conversion
+        if converter == "srec_cat":
+            cmd = ["srec_cat", hex_file_path, "-Intel", "-o", output_path, "-Binary"]
+        elif converter == "objcopy":
+            cmd = ["objcopy", "-I", "ihex", "-O", "binary", hex_file_path, output_path]
+        elif converter == "hex2bin":
+            cmd = ["hex2bin", hex_file_path]
+            output_path = os.path.splitext(hex_file_path)[0] + ".bin"
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        
+        if result.returncode == 0 and os.path.exists(output_path):
+            return True, output_path, f"Successfully converted to {os.path.basename(output_path)}"
+        else:
+            error_msg = result.stderr or result.stdout or "Unknown conversion error"
+            return False, "", f"Conversion failed: {error_msg}"
+            
+    except Exception as e:
+        return False, "", f"Conversion error: {str(e)}"
+
+def create_fs_image(dat_file_path: str, fs_size_mb: int = 1) -> Tuple[bool, str, str]:
+    """
+    Create a file system image from DAT file
+    Returns: (success, output_path, error_message)
+    """
+    try:
+        if not os.path.exists(dat_file_path):
+            return False, "", "DAT file does not exist"
+        
+        # Find FS builder tool
+        builder = find_fs_builder()
+        if not builder:
+            return False, "", "No file system builder found. Install mkspiffs or mklittlefs"
+        
+        # Create temporary directory structure
+        temp_dir = tempfile.mkdtemp(prefix="fs_build_")
+        fs_root = os.path.join(temp_dir, "fsroot")
+        os.makedirs(fs_root, exist_ok=True)
+        
+        # Copy DAT file to fsroot
+        dat_filename = os.path.basename(dat_file_path)
+        fs_dat_path = os.path.join(fs_root, dat_filename)
+        shutil.copy2(dat_file_path, fs_dat_path)
+        
+        # Create output path
+        output_path = os.path.splitext(dat_file_path)[0] + "_fs.img"
+        fs_size_bytes = fs_size_mb * 1024 * 1024
+        
+        # Build FS image
+        if builder == "mkspiffs":
+            cmd = [builder, "-c", fs_root, "-b", "4096", "-p", "256", "-s", str(fs_size_bytes), output_path]
+        elif builder == "mklittlefs":
+            cmd = [builder, "-c", fs_root, "-b", "4096", "-p", "256", "-s", str(fs_size_bytes), output_path]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        
+        # Cleanup temp directory
+        try:
+            shutil.rmtree(temp_dir)
+        except:
+            pass
+        
+        if result.returncode == 0 and os.path.exists(output_path):
+            return True, output_path, f"Successfully created FS image: {os.path.basename(output_path)}"
+        else:
+            error_msg = result.stderr or result.stdout or "Unknown FS creation error"
+            return False, "", f"FS image creation failed: {error_msg}"
+            
+    except Exception as e:
+        return False, "", f"FS image creation error: {str(e)}"
 
 def validate_firmware_file(file_path: str, device_type: str) -> Tuple[bool, str]:
     """Validate if a firmware file is suitable for the selected device"""
@@ -109,6 +230,25 @@ def validate_firmware_file(file_path: str, device_type: str) -> Tuple[bool, str]
     if device_type in ["ESP8266", "ESP32"]:
         if file_ext not in [".bin", ".hex", ".dat"]:
             return False, f"ESP devices require .bin, .hex, or .dat files, got {file_ext}"
+        
+        # Additional validation for ESP devices
+        if file_ext == ".hex":
+            # Check if converter is available
+            if not find_hex_converter():
+                return False, "HEX files require a converter tool (srec_cat, objcopy, or hex2bin). Install one to continue."
+        
+        if file_ext == ".dat":
+            # Check if FS builder is available
+            if not find_fs_builder():
+                return False, "DAT files require a file system builder (mkspiffs or mklittlefs). Install one to continue."
+            
+        elif file_ext == ".bin":
+            # Check if it's a valid ESP binary (basic size check)
+            if file_size < 1024:  # Less than 1KB is suspicious
+                return False, "Binary file seems too small for ESP firmware (< 1KB)"
+            elif file_size > 16 * 1024 * 1024:  # More than 16MB is suspicious
+                return False, "Binary file seems too large for ESP firmware (> 16MB)"
+                
     elif device_type == "AVR":
         if file_ext != ".hex":
             return False, f"AVR devices require .hex files, got {file_ext}"
@@ -120,6 +260,62 @@ def validate_firmware_file(file_path: str, device_type: str) -> Tuple[bool, str]
             return False, f"PIC devices require .hex files, got {file_ext}"
     
     return True, "File is valid"
+
+def get_file_type_info(file_path: str) -> Dict[str, str]:
+    """Get detailed information about file type and processing requirements"""
+    if not os.path.exists(file_path):
+        return {"type": "unknown", "status": "file_not_found"}
+    
+    file_ext = os.path.splitext(file_path)[1].lower()
+    file_size = os.path.getsize(file_path)
+    
+    info = {
+        "extension": file_ext,
+        "size_bytes": file_size,
+        "size_human": format_file_size(file_size),
+        "type": "unknown",
+        "status": "unknown",
+        "processing_required": False,
+        "processing_tool": None,
+        "output_format": None,
+        "notes": []
+    }
+    
+    if file_ext == ".bin":
+        info["type"] = "binary_firmware"
+        info["status"] = "ready_to_flash"
+        info["processing_required"] = False
+        info["output_format"] = "direct_flash"
+        
+    elif file_ext == ".hex":
+        info["type"] = "intel_hex"
+        info["status"] = "needs_conversion"
+        info["processing_required"] = True
+        info["processing_tool"] = find_hex_converter()
+        info["output_format"] = "binary"
+        
+        if info["processing_tool"]:
+            info["status"] = "can_convert"
+            info["notes"].append(f"Will convert to .bin using {info['processing_tool']}")
+        else:
+            info["status"] = "converter_missing"
+            info["notes"].append("No HEX converter tool found")
+            
+    elif file_ext == ".dat":
+        info["type"] = "data_file"
+        info["status"] = "needs_fs_image"
+        info["processing_required"] = True
+        info["processing_tool"] = find_fs_builder()
+        info["output_format"] = "filesystem_image"
+        
+        if info["processing_tool"]:
+            info["status"] = "can_create_fs"
+            info["notes"].append(f"Will create FS image using {info['processing_tool']}")
+        else:
+            info["status"] = "fs_builder_missing"
+            info["notes"].append("No file system builder tool found")
+    
+    return info
 
 def format_file_size(size_bytes: int) -> str:
     """Format file size in human readable format"""
@@ -251,86 +447,82 @@ def create_sample_led_patterns():
     return created_files
 
 def create_alternating_cols_pattern():
-    """Create alternating columns pattern (8x8 matrix)"""
-    # 8x8 matrix, 3 bytes per LED (RGB), alternating columns
+    """Create alternating columns pattern for 8x8 LED matrix"""
     pattern = bytearray()
-    for row in range(8):
-        for col in range(8):
-            if col % 2 == 0:
-                # Red column
+    for y in range(8):
+        for x in range(8):
+            if x % 2 == 0:
                 pattern.extend([255, 0, 0])  # Red
             else:
-                # Blue column
                 pattern.extend([0, 0, 255])  # Blue
     return pattern
 
 def create_checkerboard_pattern():
-    """Create checkerboard pattern (8x8 matrix)"""
-    # 8x8 matrix, 3 bytes per LED (RGB), checkerboard
+    """Create checkerboard pattern for 8x8 LED matrix"""
     pattern = bytearray()
-    for row in range(8):
-        for col in range(8):
-            if (row + col) % 2 == 0:
-                # White squares
+    for y in range(8):
+        for x in range(8):
+            if (x + y) % 2 == 0:
                 pattern.extend([255, 255, 255])  # White
             else:
-                # Black squares
                 pattern.extend([0, 0, 0])  # Black
     return pattern
 
 def create_rainbow_pattern():
-    """Create rainbow pattern (8x8 matrix)"""
-    # 8x8 matrix, 3 bytes per LED (RGB), rainbow effect
+    """Create rainbow pattern for 8x8 LED matrix"""
     pattern = bytearray()
-    colors = [
-        [255, 0, 0],    # Red
-        [255, 127, 0],  # Orange
-        [255, 255, 0],  # Yellow
-        [0, 255, 0],    # Green
-        [0, 0, 255],    # Blue
-        [75, 0, 130],   # Indigo
-        [148, 0, 211]   # Violet
-    ]
-    
-    for row in range(8):
-        for col in range(8):
-            color_idx = (row + col) % len(colors)
-            pattern.extend(colors[color_idx])
+    for y in range(8):
+        for x in range(8):
+            # Create rainbow effect
+            hue = (x + y) * 32  # 32 steps per color
+            if hue < 256:
+                # Red to Green
+                pattern.extend([255 - hue, hue, 0])
+            elif hue < 512:
+                # Green to Blue
+                pattern.extend([0, 255 - (hue - 256), hue - 256])
+            else:
+                # Blue to Red
+                pattern.extend([hue - 512, 0, 255 - (hue - 512)])
     return pattern
 
 def create_pulse_pattern():
-    """Create pulse pattern (8x8 matrix)"""
-    # 8x8 matrix, 3 bytes per LED (RGB), pulsing from center
+    """Create pulsing pattern for 8x8 LED matrix"""
     pattern = bytearray()
-    center = 3.5  # Center of 8x8 matrix
-    
-    for row in range(8):
-        for col in range(8):
+    center_x, center_y = 4, 4
+    for y in range(8):
+        for x in range(8):
             # Calculate distance from center
-            distance = ((row - center) ** 2 + (col - center) ** 2) ** 0.5
+            distance = ((x - center_x) ** 2 + (y - center_y) ** 2) ** 0.5
             # Create pulsing effect
-            intensity = int(255 * (1 - distance / 5.5))
-            intensity = max(0, min(255, intensity))
-            pattern.extend([intensity, intensity, intensity])  # Grayscale
+            intensity = max(0, 255 - int(distance * 40))
+            pattern.extend([intensity, intensity, intensity])
     return pattern
 
 def create_spiral_pattern():
-    """Create spiral pattern (8x8 matrix)"""
-    # 8x8 matrix, 3 bytes per LED (RGB), spiral from center
+    """Create spiral pattern for 8x8 LED matrix"""
     pattern = bytearray()
-    
-    # Create spiral order
-    spiral_order = []
+    # Create spiral coordinates
+    spiral_coords = []
+    x, y = 0, 0
+    dx, dy = 1, 0
     for i in range(64):
-        spiral_order.append(i)
+        spiral_coords.append((x, y))
+        if (x + dx < 0 or x + dx >= 8 or y + dy < 0 or y + dy >= 8 or 
+            (x + dx, y + dy) in spiral_coords):
+            # Turn right
+            dx, dy = -dy, dx
+        x, y = x + dx, y + dy
     
-    # Simple spiral pattern - just use position for color
-    for i in range(64):
-        # Use position to create color variation
-        r = (i * 7) % 256
-        g = (i * 11) % 256
-        b = (i * 13) % 256
-        pattern.extend([r, g, b])
+    # Fill pattern with rainbow colors
+    for i, (x, y) in enumerate(spiral_coords):
+        hue = i * 4  # 4 steps per LED
+        if hue < 256:
+            pattern.extend([255 - hue, hue, 0])
+        elif hue < 512:
+            pattern.extend([0, 255 - (hue - 256), hue - 256])
+        else:
+            pattern.extend([hue - 512, 0, 255 - (hue - 512)])
     
     return pattern
 

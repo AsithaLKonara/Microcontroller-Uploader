@@ -1,3 +1,22 @@
+# Core dependencies for J Tech Pixel Uploader v2.0
 pyserial==3.5
 esptool==4.6.2
+
+# Optional tools for enhanced functionality
+# These are recommended but not required for basic operation
+
+# For HEX to BIN conversion (choose one):
+# srecord>=1.64  # Cross-platform, includes srec_cat
+# binutils       # Linux/macOS, includes objcopy
+# hex2bin        # Windows alternative
+
+# For file system image creation (choose one):
+# mkspiffs       # SPIFFS file system builder
+# mklittlefs     # LittleFS file system builder
+
+# For building standalone executable
 pyinstaller==6.3.0
+
+# For development and testing
+pytest>=7.0.0
+pytest-cov>=4.0.0
