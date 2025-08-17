@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog, messagebox, colorchooser
 import serial
 import serial.tools.list_ports
 import os
@@ -9,11 +9,15 @@ import time
 from datetime import datetime
 import utils
 import config
+import sys
+import importlib.util
+from PIL import Image, ImageTk, ImageDraw
+import numpy as np
 
 class JTechPixelUploader:
     def __init__(self, root):
         self.root = root
-        self.root.title("J Tech Pixel Uploader v2.0 - ESP8266/ESP32 LED Matrix Flasher")
+        self.root.title("J Tech Pixel Uploader v3.0 - Multi-IC LED Matrix Flasher")
         self.root.geometry("1400x900")
         self.root.minsize(1200, 800)
         
@@ -35,6 +39,9 @@ class JTechPixelUploader:
             'hover': '#e2e8f0',              # Hover effects
             'selection': '#dbeafe'           # Text selection
         }
+        
+        # Check and install dependencies after colors are initialized
+        self.check_and_install_dependencies()
 
         
         # Configure root window
@@ -79,12 +86,622 @@ class JTechPixelUploader:
         self.selected_baud.set("115200")
         
         # Welcome message
-        self.log_success("🚀 J Tech Pixel Uploader v2.0 Started")
+        self.log_success("🚀 J Tech Pixel Uploader v3.0 Started")
         self.log_message("💡 Select a firmware file and configure your device to begin")
+        
+        # Show dependency status
+        self.show_dependency_status()
         
         # Apply initial responsive adjustments
         self.apply_initial_responsive_settings()
         
+    def check_and_install_dependencies(self):
+        """Check and automatically install required dependencies"""
+        try:
+            # Check if required packages are available
+            missing_packages = []
+            dependency_errors = []
+            
+            # Check pyserial
+            if not self.check_package_available('serial'):
+                missing_packages.append('pyserial')
+                dependency_errors.append("❌ pyserial package not found - Serial communication will not work")
+            else:
+                dependency_errors.append("✅ pyserial package available")
+            
+            # Check esptool
+            if not self.check_esptool_available():
+                missing_packages.append('esptool')
+                dependency_errors.append("❌ esptool package not found - ESP8266/ESP32 flashing will not work")
+            else:
+                dependency_errors.append("✅ esptool package available")
+            
+            # If packages are missing, show installation dialog
+            if missing_packages:
+                # Only show installer if colors are available (UI is initialized)
+                if hasattr(self, 'colors'):
+                    self.show_dependency_installer(missing_packages)
+                else:
+                    print(f"⚠️ Missing packages: {', '.join(missing_packages)}")
+                    print("💡 Install with: pip install " + " ".join(missing_packages))
+                
+                # Log dependency errors to the uploader log
+                if hasattr(self, 'log_error'):
+                    for error in dependency_errors:
+                        if "❌" in error:
+                            self.log_error(error)
+                        else:
+                            self.log_message(error)
+            else:
+                print("✅ All required Python dependencies are available")
+                # Log success to uploader log
+                if hasattr(self, 'log_success'):
+                    self.log_success("✅ All required Python dependencies are available")
+                
+            # Check system tools (optional but recommended)
+            if hasattr(self, 'colors'):
+                system_tool_errors = self.check_system_tools()
+                if system_tool_errors:
+                    for tool_error in system_tool_errors:
+                        if hasattr(self, 'log_warning'):
+                            self.log_warning(tool_error)
+                
+        except Exception as e:
+            error_msg = f"⚠️ Error checking dependencies: {e}"
+            print(error_msg)
+            # Log error to uploader log if available
+            if hasattr(self, 'log_error'):
+                self.log_error(error_msg)
+    
+    def check_package_available(self, package_name):
+        """Check if a Python package is available"""
+        try:
+            importlib.util.find_spec(package_name)
+            return True
+        except ImportError:
+            return False
+    
+    def check_esptool_available(self):
+        """Check if esptool is available"""
+        try:
+            # Try to import esptool
+            importlib.util.find_spec('esptool')
+            return True
+        except ImportError:
+            # Try to run esptool command
+            try:
+                result = subprocess.run(['python', '-m', 'esptool', '--help'], 
+                                      capture_output=True, text=True, timeout=5)
+                return result.returncode == 0
+            except:
+                return False
+    
+    def show_dependency_installer(self, missing_packages):
+        """Show dependency installation dialog"""
+        # Log to main log that dependency installer is being shown
+        if hasattr(self, 'log_error'):
+            self.log_error("🚨 DEPENDENCY INSTALLER REQUIRED")
+            self.log_error(f"❌ Missing packages: {', '.join(missing_packages)}")
+            self.log_message("💡 Dependency installer dialog will open")
+            self.log_message("🔧 Click 'Install Dependencies' to fix automatically")
+        
+        # Create a new window for dependency installation
+        self.dep_window = tk.Toplevel(self.root)
+        self.dep_window.title("Dependency Installation Required")
+        self.dep_window.geometry("500x400")
+        self.dep_window.configure(bg=self.colors['background'])
+        self.dep_window.resizable(False, False)
+        self.dep_window.transient(self.root)
+        self.dep_window.grab_set()
+        
+        # Center the window
+        self.dep_window.geometry("+%d+%d" % (
+            self.root.winfo_rootx() + self.root.winfo_width()//2 - 250,
+            self.root.winfo_rooty() + self.root.winfo_height()//2 - 200))
+        
+        # Main frame
+        main_frame = ttk.Frame(self.dep_window, style='Card.TFrame')
+        main_frame.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Title
+        title_label = ttk.Label(main_frame, 
+                               text="🔧 Missing Dependencies Detected", 
+                               style='Title.TLabel')
+        title_label.pack(pady=(20, 10))
+        
+        # Description
+        desc_label = ttk.Label(main_frame, 
+                              text="The following required packages are not installed:",
+                              style='Subtitle.TLabel')
+        desc_label.pack(pady=(0, 20))
+        
+        # Missing packages list
+        packages_frame = ttk.Frame(main_frame)
+        packages_frame.pack(fill='x', padx=20, pady=(0, 20))
+        
+        for package in missing_packages:
+            pkg_label = ttk.Label(main_frame, 
+                                 text=f"• {package}", 
+                                 style='Section.TLabel')
+            pkg_label.pack(anchor='w', pady=2)
+        
+        # Installation info
+        info_label = ttk.Label(main_frame, 
+                              text="Click 'Install Dependencies' to automatically install them via pip",
+                              style='Subtitle.TLabel')
+        info_label.pack(pady=(0, 20))
+        
+        # Progress bar
+        self.install_progress = ttk.Progressbar(main_frame, 
+                                               style='Custom.Horizontal.TProgressbar',
+                                               mode='indeterminate')
+        self.install_progress.pack(fill='x', padx=20, pady=(0, 20))
+        
+        # Status label
+        self.install_status = ttk.Label(main_frame, 
+                                       text="Ready to install", 
+                                       style='Status.TLabel')
+        self.install_status.pack(pady=(0, 20))
+        
+        # Buttons frame
+        buttons_frame = ttk.Frame(main_frame)
+        buttons_frame.pack(fill='x', padx=20, pady=(0, 20))
+        
+        # Install button
+        install_btn = ttk.Button(buttons_frame, 
+                                text="Install Dependencies", 
+                                style='Primary.TButton',
+                                command=lambda: self.install_dependencies(missing_packages))
+        install_btn.pack(side='left', padx=(0, 10))
+        
+        # Cancel button
+        cancel_btn = ttk.Button(buttons_frame, 
+                               text="Cancel", 
+                               style='Secondary.TButton',
+                               command=self.dep_window.destroy)
+        cancel_btn.pack(side='left')
+        
+        # Manual install info
+        manual_info = ttk.Label(main_frame, 
+                               text="Or install manually: pip install " + " ".join(missing_packages),
+                               style='FileInfo.TLabel')
+        manual_info.pack(pady=(20, 0))
+    
+    def install_dependencies(self, packages):
+        """Install missing dependencies using pip"""
+        def install_thread():
+            try:
+                # Log installation start to main log
+                if hasattr(self, 'log_progress'):
+                    self.log_progress("🚀 Starting dependency installation...")
+                    self.log_progress(f"📦 Installing packages: {', '.join(packages)}")
+                
+                self.install_status.config(text="Installing dependencies...")
+                self.install_progress.start()
+                
+                for package in packages:
+                    # Log package installation start
+                    if hasattr(self, 'log_progress'):
+                        self.log_progress(f"📦 Installing {package}...")
+                    
+                    self.install_status.config(text=f"Installing {package}...")
+                    
+                    # Install package using pip
+                    cmd = [sys.executable, '-m', 'pip', 'install', package]
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                    
+                    if result.returncode != 0:
+                        error_msg = f"Failed to install {package}: {result.stderr}"
+                        # Log error to main log
+                        if hasattr(self, 'log_error'):
+                            self.log_error(f"❌ {error_msg}")
+                        raise Exception(error_msg)
+                    
+                    # Log successful installation
+                    if hasattr(self, 'log_success'):
+                        self.log_success(f"✅ Successfully installed {package}")
+                    print(f"✅ Successfully installed {package}")
+                
+                # Log installation completion
+                if hasattr(self, 'log_success'):
+                    self.log_success("🎉 All dependencies installed successfully!")
+                    self.log_progress("🔄 Application will restart to load new packages...")
+                
+                self.install_status.config(text="Installation completed successfully!")
+                self.install_progress.stop()
+                
+                # Show success message and close window
+                messagebox.showinfo("Success", 
+                                  "All dependencies have been installed successfully!\n"
+                                  "The application will now restart to load the new packages.")
+                
+                # Restart the application
+                self.root.after(2000, self.restart_application)
+                
+            except Exception as e:
+                # Log installation failure to main log
+                if hasattr(self, 'log_error'):
+                    self.log_error(f"❌ Dependency installation failed: {str(e)}")
+                    self.log_message("🔧 Please install manually using: pip install " + " ".join(packages))
+                
+                self.install_progress.stop()
+                self.install_status.config(text=f"Installation failed: {str(e)}")
+                messagebox.showerror("Installation Error", 
+                                   f"Failed to install dependencies:\n{str(e)}\n\n"
+                                   f"Please install manually using:\npip install {' '.join(packages)}")
+                print(f"❌ Dependency installation failed: {e}")
+        
+        # Run installation in separate thread
+        threading.Thread(target=install_thread, daemon=True).start()
+    
+    def restart_application(self):
+        """Restart the application to load newly installed packages"""
+        try:
+            # Close current window
+            self.root.destroy()
+            
+            # Restart the application
+            python = sys.executable
+            os.execl(python, python, *sys.argv)
+        except Exception as e:
+            print(f"❌ Failed to restart application: {e}")
+            messagebox.showwarning("Restart Required", 
+                                 "Please manually restart the application to load the new packages.")
+    
+    def check_system_tools(self):
+        """Check if required system tools are available"""
+        missing_tools = []
+        tool_errors = []
+        
+        # Check for esptool (ESP series)
+        if not self.check_esptool_available():
+            missing_tools.append("esptool")
+            tool_errors.append("⚠️ esptool system tool not found - ESP8266/ESP32/ESP32-S3/ESP32-C6/ESP32-H2 flashing may not work properly")
+        else:
+            tool_errors.append("✅ esptool system tool available - Full ESP series support")
+        
+        # Check for avrdude (AVR series)
+        try:
+            result = subprocess.run(['avrdude', '--help'], 
+                                  capture_output=True, text=True, timeout=5)
+            if result.returncode != 0:
+                missing_tools.append("avrdude")
+                tool_errors.append("⚠️ avrdude not found - AVR/ATtiny/ATmega microcontroller support limited")
+            else:
+                tool_errors.append("✅ avrdude available - Full AVR series support (Arduino, ATtiny, ATmega)")
+        except:
+            missing_tools.append("avrdude")
+            tool_errors.append("⚠️ avrdude not found - AVR/ATtiny/ATmega microcontroller support limited")
+        
+        # Check for stm32flash (STM32 series)
+        try:
+            result = subprocess.run(['stm32flash', '--help'], 
+                                  capture_output=True, text=True, timeout=5)
+            if result.returncode != 0:
+                missing_tools.append("stm32flash")
+                tool_errors.append("⚠️ stm32flash not found - STM32 series support limited")
+            else:
+                tool_errors.append("✅ stm32flash available - Full STM32 series support (F1/F4/F7/H7/L4/G0)")
+        except:
+            missing_tools.append("stm32flash")
+            tool_errors.append("⚠️ stm32flash not found - STM32 series support limited")
+        
+        # Check for rp2040 (Raspberry Pi Pico)
+        try:
+            result = subprocess.run(['python', '-m', 'rp2040', '--help'], 
+                                  capture_output=True, text=True, timeout=5)
+            if result.returncode != 0:
+                missing_tools.append("rp2040")
+                tool_errors.append("⚠️ rp2040 tool not found - Raspberry Pi Pico support limited")
+            else:
+                tool_errors.append("✅ rp2040 tool available - Raspberry Pi Pico support")
+        except:
+            missing_tools.append("rp2040")
+            tool_errors.append("⚠️ rp2040 tool not found - Raspberry Pi Pico support limited")
+        
+        # Check for arduino-cli (Arduino variants)
+        try:
+            result = subprocess.run(['arduino-cli', 'version'], 
+                                  capture_output=True, text=True, timeout=5)
+            if result.returncode != 0:
+                missing_tools.append("arduino-cli")
+                tool_errors.append("⚠️ arduino-cli not found - Arduino Nano 33 BLE/RP2040 support limited")
+            else:
+                tool_errors.append("✅ arduino-cli available - Arduino variants support")
+        except:
+            missing_tools.append("arduino-cli")
+            tool_errors.append("⚠️ arduino-cli not found - Arduino Nano 33 BLE/RP2040 support limited")
+        
+        # Check for teensy_loader_cli (Teensy series)
+        try:
+            result = subprocess.run(['teensy_loader_cli', '--help'], 
+                                  capture_output=True, text=True, timeout=5)
+            if result.returncode != 0:
+                missing_tools.append("teensy_loader_cli")
+                tool_errors.append("⚠️ teensy_loader_cli not found - Teensy series support limited")
+            else:
+                tool_errors.append("✅ teensy_loader_cli available - Teensy series support")
+        except:
+            missing_tools.append("teensy_loader_cli")
+            tool_errors.append("⚠️ teensy_loader_cli not found - Teensy series support limited")
+        
+        # Check for mspdebug (MSP430)
+        try:
+            result = subprocess.run(['mspdebug', '--help'], 
+                                  capture_output=True, text=True, timeout=5)
+            if result.returncode != 0:
+                missing_tools.append("mspdebug")
+                tool_errors.append("⚠️ mspdebug not found - MSP430 support limited")
+            else:
+                tool_errors.append("✅ mspdebug available - MSP430 support")
+        except:
+            missing_tools.append("mspdebug")
+            tool_errors.append("⚠️ mspdebug not found - MSP430 support limited")
+        
+        # Check for commander (EFM32)
+        try:
+            result = subprocess.run(['commander', '--help'], 
+                                  capture_output=True, text=True, timeout=5)
+            if result.returncode != 0:
+                missing_tools.append("commander")
+                tool_errors.append("⚠️ commander not found - EFM32 support limited")
+            else:
+                tool_errors.append("✅ commander available - EFM32 support")
+        except:
+            missing_tools.append("commander")
+            tool_errors.append("⚠️ commander not found - EFM32 support limited")
+        
+        # Check for lpc21isp (LPC)
+        try:
+            result = subprocess.run(['lpc21isp', '--help'], 
+                                  capture_output=True, text=True, timeout=5)
+            if result.returncode != 0:
+                missing_tools.append("lpc21isp")
+                tool_errors.append("⚠️ lpc21isp not found - LPC support limited")
+            else:
+                tool_errors.append("✅ lpc21isp available - LPC support")
+        except:
+            missing_tools.append("lpc21isp")
+            tool_errors.append("⚠️ lpc21isp not found - LPC support limited")
+        
+        # Log detailed tool status
+        if hasattr(self, 'log_message'):
+            for tool_status in tool_errors:
+                if "⚠️" in tool_status:
+                    self.log_warning(tool_status)
+                else:
+                    self.log_message(tool_status)
+        
+        if missing_tools:
+            if hasattr(self, 'log_warning'):
+                self.log_warning(f"⚠️ Some system tools are missing: {', '.join(missing_tools)}")
+                self.log_message("💡 These tools are optional but provide additional microcontroller support")
+                self.log_message("📥 Install them manually or use the dependency installer for Python packages")
+        
+        return tool_errors
+    
+    def show_dependency_status(self):
+        """Show a summary of dependency status in the log"""
+        try:
+            self.log_system("🔍 Checking dependency status...")
+            
+            # Check Python packages
+            pyserial_ok = self.check_package_available('serial')
+            esptool_ok = self.check_esptool_available()
+            
+            if pyserial_ok and esptool_ok:
+                self.log_success("✅ All required Python packages are available")
+                self.log_message("📦 pyserial: Available for serial communication")
+                self.log_message("📦 esptool: Available for ESP8266/ESP32 flashing")
+            else:
+                missing = []
+                if not pyserial_ok:
+                    missing.append("pyserial")
+                    self.log_error("❌ pyserial missing - Serial communication will not work")
+                if not esptool_ok:
+                    missing.append("esptool")
+                    self.log_error("❌ esptool missing - ESP8266/ESP32 flashing will not work")
+                
+                self.log_warning(f"⚠️ Missing Python packages: {', '.join(missing)}")
+                self.log_message("💡 Use the dependency installer to install missing packages")
+                self.log_message("🔧 Manual installation: pip install " + " ".join(missing))
+            
+            # Check system tools
+            if hasattr(self, 'colors'):
+                self.log_system("🔍 Checking system tools...")
+                system_tool_errors = self.check_system_tools()
+                
+                # Count available vs missing tools
+                available_tools = sum(1 for error in system_tool_errors if "✅" in error)
+                missing_tools = sum(1 for error in system_tool_errors if "⚠️" in error)
+                
+                if missing_tools == 0:
+                    self.log_success("✅ All system tools are available")
+                else:
+                    self.log_warning(f"⚠️ {missing_tools} system tool(s) missing")
+                    self.log_message("💡 These are optional but provide enhanced microcontroller support")
+                    self.log_message("📥 Install them manually for full functionality")
+                
+                self.log_system(f"📊 System tools: {available_tools} available, {missing_tools} missing")
+                
+        except Exception as e:
+            self.log_warning(f"⚠️ Could not verify dependency status: {e}")
+            self.log_error(f"🔧 Dependency check error: {str(e)}")
+    
+    def manual_dependency_check(self):
+        """Manual dependency check triggered by user"""
+        try:
+            self.log_system("🔍 Manual dependency check initiated...")
+            self.log_message("📋 Checking all dependencies and system tools...")
+            
+            # Clear previous dependency messages
+            self.log_system("=" * 50)
+            self.log_system("DEPENDENCY STATUS REPORT")
+            self.log_system("=" * 50)
+            
+            # Run comprehensive dependency check
+            self.show_dependency_status()
+            
+            # Add summary and recommendations
+            self.log_system("=" * 50)
+            self.log_system("RECOMMENDATIONS")
+            self.log_system("=" * 50)
+            
+            # Check if we have critical dependencies
+            pyserial_ok = self.check_package_available('serial')
+            esptool_ok = self.check_esptool_available()
+            
+            if not pyserial_ok or not esptool_ok:
+                self.log_error("🚨 CRITICAL: Missing required dependencies!")
+                self.log_message("💡 Use the dependency installer to fix this")
+                self.log_message("🔧 Or install manually: pip install pyserial esptool")
+            else:
+                self.log_success("✅ All critical dependencies are available")
+                self.log_message("🚀 Ready for firmware uploads!")
+            
+            # Show detailed dependency report
+            self.show_detailed_dependency_report()
+            
+            self.log_system("=" * 50)
+            self.log_system("Dependency check complete")
+            self.log_system("=" * 50)
+            
+        except Exception as e:
+            self.log_error(f"❌ Dependency check failed: {str(e)}")
+            self.log_message("🔧 Please check the error details above")
+    
+    def show_detailed_dependency_report(self):
+        """Show detailed dependency report in the log"""
+        try:
+            self.log_system("📊 DETAILED DEPENDENCY REPORT")
+            self.log_system("-" * 30)
+            
+            # Python packages
+            self.log_system("🐍 PYTHON PACKAGES:")
+            pyserial_ok = self.check_package_available('serial')
+            esptool_ok = self.check_esptool_available()
+            
+            if pyserial_ok:
+                self.log_success("  ✅ pyserial - Serial communication support")
+            else:
+                self.log_error("  ❌ pyserial - Serial communication will fail")
+            
+            if esptool_ok:
+                self.log_success("  ✅ esptool - ESP8266/ESP32 flashing support")
+            else:
+                self.log_error("  ❌ esptool - ESP8266/ESP32 flashing will fail")
+            
+            # System tools
+            self.log_system("🔧 SYSTEM TOOLS:")
+            try:
+                # Check avrdude
+                result = subprocess.run(['avrdude', '--help'], 
+                                      capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    self.log_success("  ✅ avrdude - AVR series support (Arduino, ATtiny, ATmega)")
+                else:
+                    self.log_warning("  ⚠️ avrdude - AVR series support limited")
+            except:
+                self.log_warning("  ⚠️ avrdude - AVR series support limited")
+            
+            try:
+                # Check stm32flash
+                result = subprocess.run(['stm32flash', '--help'], 
+                                      capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    self.log_success("  ✅ stm32flash - STM32 series support (F1/F4/F7/H7/L4/G0)")
+                else:
+                    self.log_warning("  ⚠️ stm32flash - STM32 series support limited")
+            except:
+                self.log_warning("  ⚠️ stm32flash - STM32 series support limited")
+            
+            try:
+                # Check rp2040
+                result = subprocess.run(['python', '-m', 'rp2040', '--help'], 
+                                      capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    self.log_success("  ✅ rp2040 - Raspberry Pi Pico support")
+                else:
+                    self.log_warning("  ⚠️ rp2040 - Raspberry Pi Pico support limited")
+            except:
+                self.log_warning("  ⚠️ rp2040 - Raspberry Pi Pico support limited")
+            
+            try:
+                # Check arduino-cli
+                result = subprocess.run(['arduino-cli', 'version'], 
+                                      capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    self.log_success("  ✅ arduino-cli - Arduino variants support")
+                else:
+                    self.log_warning("  ⚠️ arduino-cli - Arduino variants support limited")
+            except:
+                self.log_warning("  ⚠️ arduino-cli - Arduino variants support limited")
+            
+            try:
+                # Check teensy_loader_cli
+                result = subprocess.run(['teensy_loader_cli', '--help'], 
+                                      capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    self.log_success("  ✅ teensy_loader_cli - Teensy series support")
+                else:
+                    self.log_warning("  ⚠️ teensy_loader_cli - Teensy series support limited")
+            except:
+                self.log_warning("  ⚠️ teensy_loader_cli - Teensy series support limited")
+            
+            try:
+                # Check mspdebug
+                result = subprocess.run(['mspdebug', '--help'], 
+                                      capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    self.log_success("  ✅ mspdebug - MSP430 support")
+                else:
+                    self.log_warning("  ⚠️ mspdebug - MSP430 support limited")
+            except:
+                self.log_warning("  ⚠️ mspdebug - MSP430 support limited")
+            
+            try:
+                # Check commander
+                result = subprocess.run(['commander', '--help'], 
+                                      capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    self.log_success("  ✅ commander - EFM32 support")
+                else:
+                    self.log_warning("  ⚠️ commander - EFM32 support limited")
+            except:
+                self.log_warning("  ⚠️ commander - EFM32 support limited")
+            
+            try:
+                # Check lpc21isp
+                result = subprocess.run(['lpc21isp', '--help'], 
+                                      capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    self.log_success("  ✅ lpc21isp - LPC support")
+                else:
+                    self.log_warning("  ⚠️ lpc21isp - LPC support limited")
+            except:
+                self.log_warning("  ⚠️ lpc21isp - LPC support limited")
+            
+            # Python version and platform info
+            self.log_system("💻 SYSTEM INFORMATION:")
+            self.log_message(f"  Python: {sys.version.split()[0]}")
+            self.log_message(f"  Platform: {sys.platform}")
+            self.log_message(f"  Architecture: {sys.maxsize > 2**32 and '64-bit' or '32-bit'}")
+            
+            # Recommendations
+            self.log_system("💡 RECOMMENDATIONS:")
+            if not pyserial_ok or not esptool_ok:
+                self.log_error("  🚨 Install missing Python packages immediately")
+                self.log_message("  💡 Use: pip install pyserial esptool")
+            else:
+                self.log_success("  ✅ All critical dependencies are available")
+                self.log_message("  🚀 You can proceed with firmware uploads")
+            
+            self.log_message("  💡 System tools (avrdude, stm32flash, rp2040, arduino-cli, teensy_loader_cli, mspdebug, commander, lpc21isp) are optional")
+            self.log_message("  💡 They provide enhanced microcontroller support for all 25 IC families")
+            
+        except Exception as e:
+            self.log_error(f"❌ Detailed report generation failed: {str(e)}")
+    
     def setup_custom_styles(self):
         """Configure custom ttk styles for modern dark theme appearance"""
         self.style = ttk.Style()
@@ -338,9 +955,11 @@ class JTechPixelUploader:
         
         ttk.Button(buttons_frame, text="🔍 Chip Info", command=self.get_chip_info,
                   style='Secondary.TButton').grid(row=0, column=0, padx=(0, 10))
+        ttk.Button(buttons_frame, text="🎨 Pattern Editor", command=self.open_pattern_editor,
+                  style='Secondary.TButton').grid(row=0, column=1, padx=(0, 10))
         self.upload_button = ttk.Button(buttons_frame, text="🚀 Upload", command=self.start_upload,
                                        style='Primary.TButton')
-        self.upload_button.grid(row=0, column=1)
+        self.upload_button.grid(row=0, column=2)
         
         # Options
         options_frame = ttk.Frame(actions_frame)
@@ -381,16 +1000,18 @@ class JTechPixelUploader:
         log_frame = ttk.LabelFrame(right_frame, text="📝 Upload Log", style='Card.TFrame', padding=15)
         log_frame.pack(fill=tk.BOTH, expand=True)
         
-        # Log controls row
+                # Log controls row
         log_controls = ttk.Frame(log_frame)
         log_controls.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         
         ttk.Button(log_controls, text="🗑️ Clear Log", command=self.clear_log,
-                  style='Info.TButton').grid(row=0, column=0, padx=(0, 10))
+                   style='Info.TButton').grid(row=0, column=0, padx=(0, 10))
         ttk.Button(log_controls, text="💾 Save Log", command=self.save_log,
-                  style='Info.TButton').grid(row=0, column=1, padx=(0, 10))
+                   style='Info.TButton').grid(row=0, column=1, padx=(0, 10))
         ttk.Button(log_controls, text="📋 Copy Log", command=self.copy_log,
-                  style='Info.TButton').grid(row=0, column=2)
+                   style='Info.TButton').grid(row=0, column=2, padx=(0, 10))
+        ttk.Button(log_controls, text="🔍 Check Dependencies", command=self.manual_dependency_check,
+                   style='Info.TButton').grid(row=0, column=3)
         
         # Log text area
         log_container = ttk.Frame(log_frame, style='Log.TFrame')
@@ -523,10 +1144,11 @@ class JTechPixelUploader:
                 ]
         else:
             filetypes = [
-                ("Firmware files", "*.bin *.hex *.dat *.elf"),
+                ("Firmware files", "*.bin *.hex *.dat *.elf *.uf2"),
                 ("Binary files", "*.bin"),
                 ("Hex files", "*.hex"),
                 ("Data files", "*.dat"),
+                ("UF2 files", "*.uf2"),
                 ("All files", "*.*")
             ]
             
@@ -642,6 +1264,21 @@ class JTechPixelUploader:
                         self.log_message("⚠ Warning: Binary file seems too large for ESP firmware")
                 except:
                     pass
+        
+        # Validation for RP2040 devices
+        elif device == "RP2040":
+            if file_ext not in [".uf2", ".bin"]:
+                self.log_message("⚠ Warning: RP2040 devices prefer .uf2 files for easy flashing")
+        
+        # Validation for Teensy devices
+        elif device.startswith("Teensy"):
+            if file_ext not in [".hex", ".bin"]:
+                self.log_message("⚠ Warning: Teensy devices support .hex and .bin files")
+        
+        # Validation for Arduino variants
+        elif device.startswith("Arduino-Nano"):
+            if file_ext not in [".hex", ".bin", ".uf2"]:
+                self.log_message("⚠ Warning: Arduino Nano variants support .hex, .bin, and .uf2 files")
                     
         return True
             
@@ -671,6 +1308,21 @@ class JTechPixelUploader:
                 if device.startswith("ESP"):
                     self.log_warning("Important: ESP devices only support .bin files, not .hex files")
                     self.log_message("💡 If you have a .hex file, you need to convert it to .bin first")
+                
+                # Show special info for RP2040
+                elif device == "RP2040":
+                    self.log_message("💡 RP2040 devices support .uf2 files for easy drag-and-drop flashing")
+                    self.log_message("💡 .bin files are also supported for advanced users")
+                
+                # Show special info for Teensy devices
+                elif device.startswith("Teensy"):
+                    self.log_message("💡 Teensy devices support .hex and .bin files")
+                    self.log_message("💡 Teensy Loader CLI tool required for flashing")
+                
+                # Show special info for Arduino variants
+                elif device.startswith("Arduino-Nano"):
+                    self.log_message("💡 Arduino Nano variants support multiple formats")
+                    self.log_message("💡 Arduino CLI tool required for compilation and upload")
             else:
                 self.log_success(f"Selected device: {device} - {desc}")
                 self.log_message("📋 All firmware formats supported")
@@ -1464,10 +2116,12 @@ Select the appropriate format for your firmware source."""
     def browse_file(self):
         """Browse for firmware or data files"""
         filetypes = [
-            ("All supported files", "*.bin;*.hex;*.dat"),
+            ("All supported files", "*.bin;*.hex;*.dat;*.uf2;*.elf"),
             ("Binary files", "*.bin"),
             ("Intel HEX files", "*.hex"),
             ("Data files", "*.dat"),
+            ("UF2 files", "*.uf2"),
+            ("ELF files", "*.elf"),
             ("All files", "*.*")
         ]
         
@@ -1579,6 +2233,9 @@ Select the appropriate format for your firmware source."""
             if info.get('type') == 'dat':
                 self.firmware_mode_var.set("filesystem")
                 self.log_message("📁 Data file detected - switching to Data Mode")
+            elif info.get('type') in ['uf2_firmware', 'elf_debug']:
+                self.firmware_mode_var.set("firmware")
+                self.log_message("⚙️ Firmware file detected - switching to Firmware Mode")
             else:
                 self.firmware_mode_var.set("firmware")
                 self.log_message("⚙️ Firmware file detected - switching to Firmware Mode")
@@ -1827,6 +2484,323 @@ Select the appropriate format for your firmware source."""
             self.log_system("Standard layout applied")
             
         except Exception as e:
+            pass
+    
+    def open_pattern_editor(self):
+        """Open the visual pattern editor dialog"""
+        try:
+            # Get current device for matrix size suggestion
+            device = self.selected_device.get()
+            matrix_size = (8, 8)  # Default size
+            
+            # Suggest matrix size based on device
+            if device.startswith("ESP"):
+                if "32" in device:
+                    matrix_size = (16, 16)  # ESP32 can handle larger matrices
+                else:
+                    matrix_size = (8, 8)  # ESP8266 works well with 8x8
+            
+            # Open pattern editor
+            editor = PatternEditorDialog(self.root, matrix_size)
+            self.log_success("🎨 Pattern Editor opened")
+            self.log_message("💡 Create custom LED patterns and export as .dat files")
+            
+        except Exception as e:
+            self.log_error(f"Failed to open Pattern Editor: {str(e)}")
+            messagebox.showerror("Error", f"Failed to open Pattern Editor:\n{str(e)}")
+
+
+class PatternEditorDialog:
+    """Visual pattern editor for creating and editing LED patterns"""
+    
+    def __init__(self, parent, matrix_size=(8, 8)):
+        self.parent = parent
+        self.matrix_size = matrix_size
+        self.leds = matrix_size[0] * matrix_size[1]
+        self.pattern_data = [[0, 0, 0] for _ in range(self.leds)]  # RGB values
+        
+        # Create dialog window
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title(f"🎨 LED Pattern Editor - {matrix_size[0]}x{matrix_size[1]}")
+        self.dialog.geometry("800x600")
+        self.dialog.resizable(True, True)
+        
+        # Make dialog modal
+        self.dialog.transient(parent)
+        self.dialog.grab_set()
+        
+        self.setup_ui()
+        self.create_canvas()
+        
+    def setup_ui(self):
+        """Setup the user interface"""
+        # Main frame
+        main_frame = ttk.Frame(self.dialog)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Control panel
+        control_frame = ttk.LabelFrame(main_frame, text="Controls", padding=10)
+        control_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        # Matrix size selector
+        size_frame = ttk.Frame(control_frame)
+        size_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(size_frame, text="Matrix Size:").pack(side=tk.LEFT)
+        self.size_var = tk.StringVar(value=f"{self.matrix_size[0]}x{self.matrix_size[1]}")
+        size_combo = ttk.Combobox(size_frame, textvariable=self.size_var, 
+                                 values=["8x8", "16x16", "32x32"], state="readonly")
+        size_combo.pack(side=tk.LEFT, padx=(10, 0))
+        size_combo.bind("<<ComboboxSelected>>", self.on_size_change)
+        
+        # Color picker
+        color_frame = ttk.Frame(control_frame)
+        color_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(color_frame, text="Current Color:").pack(side=tk.LEFT)
+        self.color_var = tk.StringVar(value="#FF0000")
+        color_entry = ttk.Entry(color_frame, textvariable=self.color_var, width=10)
+        color_entry.pack(side=tk.LEFT, padx=(10, 0))
+        
+        self.color_button = tk.Button(color_frame, bg="#FF0000", width=3, height=1,
+                                    command=self.pick_color)
+        self.color_button.pack(side=tk.LEFT, padx=(10, 0))
+        
+        # Tool buttons
+        button_frame = ttk.Frame(control_frame)
+        button_frame.pack(fill=tk.X)
+        
+        ttk.Button(button_frame, text="🎨 Pick Color", command=self.pick_color).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(button_frame, text="🗑️ Clear All", command=self.clear_pattern).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(button_frame, text="🔄 Random", command=self.random_pattern).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(button_frame, text="📁 Import Image", command=self.import_image).pack(side=tk.LEFT, padx=(0, 10))
+        
+        # Export buttons
+        export_frame = ttk.Frame(control_frame)
+        export_frame.pack(fill=tk.X, pady=(10, 0))
+        
+        ttk.Button(export_frame, text="💾 Save .dat", command=self.save_dat).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(export_frame, text="💾 Save .bin", command=self.save_bin).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(button_frame, text="❌ Close", command=self.dialog.destroy).pack(side=tk.RIGHT)
+        
+        # Canvas frame
+        canvas_frame = ttk.LabelFrame(main_frame, text="LED Matrix", padding=10)
+        canvas_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Status bar
+        self.status_var = tk.StringVar(value=f"Ready - {self.leds} LEDs")
+        status_bar = ttk.Label(main_frame, textvariable=self.status_var, relief=tk.SUNKEN)
+        status_bar.pack(fill=tk.X, pady=(10, 0))
+        
+    def create_canvas(self):
+        """Create the LED matrix canvas"""
+        # Canvas frame
+        canvas_container = ttk.Frame(self.dialog.winfo_children()[0].winfo_children()[-2])
+        canvas_container.pack(fill=tk.BOTH, expand=True)
+        
+        # Create canvas
+        self.canvas = tk.Canvas(canvas_container, bg="black", highlightthickness=0)
+        self.canvas.pack(fill=tk.BOTH, expand=True)
+        
+        # Bind events
+        self.canvas.bind("<Button-1>", self.on_canvas_click)
+        self.canvas.bind("<B1-Motion>", self.on_canvas_drag)
+        
+        # Draw grid
+        self.draw_grid()
+        
+    def draw_grid(self):
+        """Draw the LED grid"""
+        self.canvas.delete("all")
+        
+        # Calculate cell size
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+        
+        if canvas_width <= 1 or canvas_height <= 1:
+            # Canvas not yet sized, schedule redraw
+            self.dialog.after(100, self.draw_grid)
+            return
+        
+        cell_width = canvas_width / self.matrix_size[0]
+        cell_height = canvas_height / self.matrix_size[1]
+        
+        # Draw grid lines
+        for i in range(self.matrix_size[0] + 1):
+            x = i * cell_width
+            self.canvas.create_line(x, 0, x, canvas_height, fill="gray", width=1)
+            
+        for i in range(self.matrix_size[1] + 1):
+            y = i * cell_height
+            self.canvas.create_line(0, y, canvas_width, y, fill="gray", width=1)
+        
+        # Draw LEDs
+        for y in range(self.matrix_size[1]):
+            for x in range(self.matrix_size[0]):
+                led_index = y * self.matrix_size[0] + x
+                if led_index < len(self.pattern_data):
+                    r, g, b = self.pattern_data[led_index]
+                    color = f"#{r:02x}{g:02x}{b:02x}"
+                    
+                    x1 = x * cell_width + 2
+                    y1 = y * cell_height + 2
+                    x2 = (x + 1) * cell_width - 2
+                    y2 = (y + 1) * cell_height - 2
+                    
+                    self.canvas.create_oval(x1, y1, x2, y2, fill=color, outline="white", width=1)
+        
+        # Update status
+        self.status_var.set(f"Matrix: {self.matrix_size[0]}x{self.matrix_size[1]} - {self.leds} LEDs")
+        
+    def on_canvas_click(self, event):
+        """Handle canvas click events"""
+        self.update_led_at_position(event.x, event.y)
+        
+    def on_canvas_drag(self, event):
+        """Handle canvas drag events"""
+        self.update_led_at_position(event.x, event.y)
+        
+    def update_led_at_position(self, x, y):
+        """Update LED at given canvas position"""
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+        
+        if canvas_width <= 1 or canvas_height <= 1:
+            return
+        
+        cell_width = canvas_width / self.matrix_size[0]
+        cell_height = canvas_height / self.matrix_size[1]
+        
+        grid_x = int(x / cell_width)
+        grid_y = int(y / cell_height)
+        
+        if 0 <= grid_x < self.matrix_size[0] and 0 <= grid_y < self.matrix_size[1]:
+            led_index = grid_y * self.matrix_size[0] + grid_x
+            if led_index < len(self.pattern_data):
+                # Parse current color
+                color = self.color_var.get()
+                if color.startswith("#") and len(color) == 7:
+                    try:
+                        r = int(color[1:3], 16)
+                        g = int(color[3:5], 16)
+                        b = int(color[5:7], 16)
+                        self.pattern_data[led_index] = [r, g, b]
+                        self.draw_grid()
+                    except ValueError:
+                        pass
+                        
+    def pick_color(self):
+        """Open color picker dialog"""
+        try:
+            from tkinter import colorchooser
+            color = colorchooser.askcolor(title="Pick LED Color")[1]
+            if color:
+                self.color_var.set(color)
+                self.color_button.config(bg=color)
+        except ImportError:
+            # Fallback to simple color selection
+            colors = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF", "#FFFFFF", "#000000"]
+            current = colors.index(self.color_var.get()) if self.color_var.get() in colors else 0
+            next_color = colors[(current + 1) % len(colors)]
+            self.color_var.set(next_color)
+            self.color_button.config(bg=next_color)
+            
+    def clear_pattern(self):
+        """Clear all LEDs to black"""
+        self.pattern_data = [[0, 0, 0] for _ in range(self.leds)]
+        self.draw_grid()
+        
+    def random_pattern(self):
+        """Generate random pattern"""
+        import random
+        self.pattern_data = [[random.randint(0, 255) for _ in range(3)] for _ in range(self.leds)]
+        self.draw_grid()
+        
+    def import_image(self):
+        """Import image and convert to LED pattern"""
+        try:
+            from tkinter import filedialog
+            filename = filedialog.askopenfilename(
+                title="Import Image",
+                filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif")]
+            )
+            if filename:
+                # Load and resize image
+                img = Image.open(filename)
+                img = img.resize(self.matrix_size, Image.Resampling.LANCZOS)
+                
+                # Convert to RGB pattern
+                for y in range(self.matrix_size[1]):
+                    for x in range(self.matrix_size[0]):
+                        led_index = y * self.matrix_size[0] + x
+                        if led_index < len(self.pattern_data):
+                            pixel = img.getpixel((x, y))
+                            if len(pixel) >= 3:
+                                self.pattern_data[led_index] = list(pixel[:3])
+                            else:
+                                self.pattern_data[led_index] = [pixel[0], pixel[0], pixel[0]]
+                
+                self.draw_grid()
+                self.status_var.set(f"Imported image: {os.path.basename(filename)}")
+        except Exception as e:
+            messagebox.showerror("Import Error", f"Failed to import image:\n{str(e)}")
+            
+    def save_dat(self):
+        """Save pattern as .dat file"""
+        try:
+            from tkinter import filedialog
+            filename = filedialog.asksaveasfilename(
+                title="Save LED Pattern",
+                defaultextension=".dat",
+                filetypes=[("DAT files", "*.dat"), ("All files", "*.*")]
+            )
+            if filename:
+                # Convert pattern to bytes
+                data = bytearray()
+                for led in self.pattern_data:
+                    data.extend(led)
+                
+                with open(filename, 'wb') as f:
+                    f.write(data)
+                
+                self.status_var.set(f"Saved: {os.path.basename(filename)}")
+                messagebox.showinfo("Success", f"Pattern saved as {filename}")
+        except Exception as e:
+            messagebox.showerror("Save Error", f"Failed to save pattern:\n{str(e)}")
+            
+    def save_bin(self):
+        """Save pattern as .bin file"""
+        try:
+            from tkinter import filedialog
+            filename = filedialog.asksaveasfilename(
+                title="Save LED Pattern",
+                defaultextension=".bin",
+                filetypes=[("BIN files", "*.bin"), ("All files", "*.*")]
+            )
+            if filename:
+                # Convert pattern to bytes
+                data = bytearray()
+                for led in self.pattern_data:
+                    data.extend(led)
+                
+                with open(filename, 'wb') as f:
+                    f.write(data)
+                
+                self.status_var.set(f"Saved: {os.path.basename(filename)}")
+                messagebox.showinfo("Success", f"Pattern saved as {filename}")
+        except Exception as e:
+            messagebox.showerror("Save Error", f"Failed to save pattern:\n{str(e)}")
+            
+    def on_size_change(self, event=None):
+        """Handle matrix size change"""
+        try:
+            size_str = self.size_var.get()
+            width, height = map(int, size_str.split('x'))
+            self.matrix_size = (width, height)
+            self.leds = width * height
+            self.pattern_data = [[0, 0, 0] for _ in range(self.leds)]
+            self.draw_grid()
+        except ValueError:
             pass
  
 def main():

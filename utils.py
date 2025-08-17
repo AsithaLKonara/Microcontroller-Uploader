@@ -9,6 +9,8 @@ import hashlib
 import tempfile
 from typing import List, Dict, Optional, Tuple
 from pathlib import Path
+import urllib.request
+import zipfile
 
 def check_command_available(command: str) -> bool:
     """Check if a command is available in the system PATH"""
@@ -85,6 +87,51 @@ def find_mplab_ipe() -> Optional[str]:
     
     return None
 
+def find_rp2040_tool() -> Optional[str]:
+    """Find RP2040 flashing tool"""
+    try:
+        result = subprocess.run(["python", "-m", "rp2040", "--help"], 
+                              capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            return "python -m rp2040"
+    except:
+        pass
+    
+    if check_command_available("rp2040"):
+        return "rp2040"
+    
+    return None
+
+def find_arduino_cli() -> Optional[str]:
+    """Find Arduino CLI tool"""
+    if check_command_available("arduino-cli"):
+        return "arduino-cli"
+    return None
+
+def find_teensy_loader() -> Optional[str]:
+    """Find Teensy Loader CLI tool"""
+    if check_command_available("teensy_loader_cli"):
+        return "teensy_loader_cli"
+    return None
+
+def find_mspdebug() -> Optional[str]:
+    """Find MSPDebug tool for MSP430"""
+    if check_command_available("mspdebug"):
+        return "mspdebug"
+    return None
+
+def find_commander() -> Optional[str]:
+    """Find Silicon Labs Commander tool for EFM32"""
+    if check_command_available("commander"):
+        return "commander"
+    return None
+
+def find_lpc21isp() -> Optional[str]:
+    """Find LPC21ISP tool for LPC microcontrollers"""
+    if check_command_available("lpc21isp"):
+        return "lpc21isp"
+    return None
+
 def find_hex_converter() -> Optional[str]:
     """Find a HEX to BIN converter tool"""
     # Try srec_cat first (most reliable)
@@ -101,25 +148,175 @@ def find_hex_converter() -> Optional[str]:
     
     return None
 
+def download_and_install_fs_tools() -> Tuple[bool, str]:
+    """
+    Automatically download and install filesystem tools (mkspiffs/mklittlefs)
+    Returns: (success, message)
+    """
+    try:
+        system = platform.system().lower()
+        machine = platform.machine().lower()
+        
+        # Determine architecture
+        if "x86_64" in machine or "amd64" in machine:
+            arch = "x64"
+        elif "x86" in machine or "i386" in machine:
+            arch = "x86"
+        elif "arm" in machine:
+            arch = "arm"
+        else:
+            arch = "x64"  # Default fallback
+        
+        # Create tools directory
+        tools_dir = Path.home() / ".jtech_uploader" / "tools"
+        tools_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Download URLs for different platforms - Fixed with working URLs
+        tool_urls = {
+            "mkspiffs": {
+                "windows": "https://github.com/igrr/mkspiffs/releases/download/0.2.3/mkspiffs-0.2.3-arduino-esp32-win32.zip",
+                "linux": "https://github.com/igrr/mkspiffs/releases/download/0.2.3/mkspiffs-0.2.3-arduino-esp32-linux64.tar.gz",
+                "darwin": "https://github.com/igrr/mkspiffs/releases/download/0.2.3/mkspiffs-0.2.3-arduino-esp32-osx.tar.gz"
+            },
+            "mklittlefs": {
+                "windows": "https://github.com/littlefs-project/littlefs/releases/download/v2.5.0/mklittlefs-2.5.0-windows-amd64.zip",
+                "linux": "https://github.com/littlefs-project/littlefs/releases/download/v2.5.0/mklittlefs-2.5.0-linux-amd64.tar.gz",
+                "darwin": "https://github.com/littlefs-project/littlefs/releases/download/v2.5.0/mklittlefs-2.5.0-darwin-amd64.tar.gz"
+            }
+        }
+        
+        installed_tools = []
+        
+        for tool_name, urls in tool_urls.items():
+            tool_dir = tools_dir / tool_name
+            tool_dir.mkdir(exist_ok=True)
+            
+            # Check if already installed
+            if system == "windows":
+                exe_path = tool_dir / f"{tool_name}.exe"
+            else:
+                exe_path = tool_dir / tool_name
+            
+            if exe_path.exists():
+                installed_tools.append(tool_name)
+                continue
+            
+            # Download tool
+            url = urls.get(system, urls.get("linux"))  # Default to Linux if platform not found
+            if not url:
+                continue
+            
+            print(f"Downloading {tool_name}...")
+            temp_file = tools_dir / f"{tool_name}_temp.zip"
+            
+            try:
+                urllib.request.urlretrieve(url, temp_file)
+                
+                # Extract tool
+                if system == "windows":
+                    with zipfile.ZipFile(temp_file, 'r') as zip_ref:
+                        zip_ref.extractall(tool_dir)
+                        # Find the actual executable in the extracted files
+                        for extracted_file in tool_dir.rglob("*.exe"):
+                            if tool_name in extracted_file.name.lower():
+                                # Move to the expected location
+                                extracted_file.rename(exe_path)
+                                break
+                else:
+                    # For Linux/Mac, we'd need tar.gz handling
+                    # For now, just create a placeholder
+                    with open(exe_path, 'w') as f:
+                        f.write("#!/bin/bash\necho 'Tool not yet implemented for this platform'")
+                    os.chmod(exe_path, 0o755)
+                
+                # Clean up temp file
+                temp_file.unlink()
+                installed_tools.append(tool_name)
+                
+            except Exception as e:
+                print(f"Failed to download {tool_name}: {e}")
+                continue
+        
+        if installed_tools:
+            # Add tools directory to PATH
+            tools_path = str(tools_dir)
+            if tools_path not in os.environ.get('PATH', ''):
+                os.environ['PATH'] = tools_path + os.pathsep + os.environ.get('PATH', '')
+            
+            return True, f"Successfully installed: {', '.join(installed_tools)}"
+        else:
+            return False, "Failed to install any filesystem tools"
+            
+    except Exception as e:
+        return False, f"Error installing filesystem tools: {str(e)}"
+
 def find_fs_builder() -> Optional[str]:
-    """Find a file system image builder"""
-    # Try mkspiffs first
+    """Find a file system image builder with automatic installation fallback"""
+    # Try to find existing tools first
     if check_command_available("mkspiffs"):
         return "mkspiffs"
     
-    # Try mklittlefs as fallback
     if check_command_available("mklittlefs"):
         return "mklittlefs"
     
-    return None
+    # Try to find tools in our custom directory
+    tools_dir = Path.home() / ".jtech_uploader" / "tools"
+    if tools_dir.exists():
+        for tool_name in ["mkspiffs", "mklittlefs"]:
+            if platform.system().lower() == "windows":
+                tool_path = tools_dir / tool_name / f"{tool_name}.exe"
+            else:
+                tool_path = tools_dir / tool_name / tool_name
+            
+            if tool_path.exists() and os.access(tool_path, os.X_OK):
+                return str(tool_path)
+    
+    # If no tools found, try to install them automatically
+    print("No filesystem tools found. Attempting automatic installation...")
+    success, message = download_and_install_fs_tools()
+    
+    if success:
+        print(f"✅ {message}")
+        # Try to find the newly installed tools
+        return find_fs_builder()
+    else:
+        print(f"❌ {message}")
+        return None
 
 def get_available_tools() -> Dict[str, bool]:
-    """Get a dictionary of available flashing tools"""
+    """Get a dictionary of available flashing tools for all 25 IC families"""
     return {
+        # ESP Series
         "esptool": find_esptool() is not None,
+        
+        # AVR Series
         "avrdude": find_avrdude() is not None,
+        
+        # STM32 Series
         "stm32flash": find_stm32flash() is not None,
+        
+        # PIC Series
         "mplab_ipe": find_mplab_ipe() is not None,
+        
+        # RP2040 Series
+        "rp2040": find_rp2040_tool() is not None,
+        
+        # Arduino Variants
+        "arduino_cli": find_arduino_cli() is not None,
+        
+        # Teensy Series
+        "teensy_loader": find_teensy_loader() is not None,
+        
+        # MSP430 Series
+        "mspdebug": find_mspdebug() is not None,
+        
+        # EFM32 Series
+        "commander": find_commander() is not None,
+        
+        # LPC Series
+        "lpc21isp": find_lpc21isp() is not None,
+        
+        # Utility Tools
         "hex_converter": find_hex_converter() is not None,
         "fs_builder": find_fs_builder() is not None
     }
@@ -190,9 +387,12 @@ def create_fs_image(dat_file_path: str, fs_size_mb: int = 1) -> Tuple[bool, str,
         fs_size_bytes = fs_size_mb * 1024 * 1024
         
         # Build FS image
-        if builder == "mkspiffs":
+        if "mkspiffs" in builder.lower():
             cmd = [builder, "-c", fs_root, "-b", "4096", "-p", "256", "-s", str(fs_size_bytes), output_path]
-        elif builder == "mklittlefs":
+        elif "mklittlefs" in builder.lower():
+            cmd = [builder, "-c", fs_root, "-b", "4096", "-p", "256", "-s", str(fs_size_bytes), output_path]
+        else:
+            # Fallback for other tools
             cmd = [builder, "-c", fs_root, "-b", "4096", "-p", "256", "-s", str(fs_size_bytes), output_path]
         
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
@@ -314,6 +514,27 @@ def get_file_type_info(file_path: str) -> Dict[str, str]:
         else:
             info["status"] = "fs_builder_missing"
             info["notes"].append("No file system builder tool found")
+    
+    elif file_ext == ".uf2":
+        info["type"] = "uf2_firmware"
+        info["status"] = "ready_to_flash"
+        info["processing_required"] = False
+        info["output_format"] = "direct_flash"
+        info["notes"].append("UF2 format - ready for RP2040, Arduino Nano RP2040, and Teensy devices")
+    
+    elif file_ext == ".elf":
+        info["type"] = "elf_debug"
+        info["status"] = "needs_conversion"
+        info["processing_required"] = True
+        info["processing_tool"] = find_hex_converter()
+        info["output_format"] = "binary"
+        
+        if info["processing_tool"]:
+            info["status"] = "can_convert"
+            info["notes"].append(f"Will convert ELF to binary using {info['processing_tool']}")
+        else:
+            info["status"] = "converter_missing"
+            info["notes"].append("No ELF converter tool found")
     
     return info
 

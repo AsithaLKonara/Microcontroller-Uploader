@@ -1,0 +1,25 @@
+J Tech Pixel Uploader v2.0 Final
+Build Date: 2025-08-17 18:14:15
+Python Version: 3.12.5 (tags/v3.12.5:ff3bc82, Aug  6 2024, 20:45:27) [MSC v.1940 64 bit (AMD64)]
+Platform: win32
+
+Features:
+- Automatic dependency checker and installer
+- Professional GUI with responsive design
+- Multi-device support (ESP8266, ESP32, AVR, STM32)
+- Real-time upload progress and logging
+- Smart file validation and conversion
+- Comprehensive error handling and troubleshooting
+
+Dependencies:
+- pyserial (automatic installation)
+- esptool (automatic installation)
+- tkinter (included with Python)
+
+Sample Firmware:
+- 8x8 LED matrix patterns
+- 16x16 LED matrix patterns
+- ESP8266/ESP32 examples
+- Various animation patterns
+
+This is a standalone executable - no Python installation required!

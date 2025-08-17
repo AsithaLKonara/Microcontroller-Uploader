@@ -1,0 +1,44 @@
+GIT COMMANDS TO COMMIT ALL CHANGES
+====================================
+
+1. Add all files to git:
+   git add .
+
+2. Check git status:
+   git status
+
+3. Commit with detailed message:
+   git commit -m "Add pattern-based hardware testing and UI layout improvements
+
+- Added LED pattern testing functionality for ESP8266/ESP32
+- Implemented custom serial protocol for hardware verification
+- Added pattern detection and sample pattern creation
+- Moved upload log to right side of UI for better layout
+- Added auto-reset and visual verification features
+- Fixed on_device_change method signature for event binding
+- Enhanced device control with smart reset capabilities
+- Added comprehensive pattern testing UI with test cycle automation
+- Updated config.py with pattern testing and LED matrix configs
+- Enhanced utils.py with sample pattern creation functions
+- Added test_pattern_testing.py for functionality verification
+- Created SampleFirmware directory with sample patterns
+- Updated requirements.txt with necessary dependencies
+- Enhanced README.md with comprehensive documentation
+- Added project structure and demo files"
+
+4. Check final status:
+   git status
+
+ALTERNATIVE: Run the batch file
+- Double-click: git_commit_all.bat
+- Or run: git_commit_all.ps1 (PowerShell)
+
+FILES MODIFIED/ADDED:
+- j_tech_pixel_uploader.py (main application with pattern testing)
+- config.py (pattern testing configuration)
+- utils.py (sample pattern creation functions)
+- test_pattern_testing.py (new test script)
+- SampleFirmware/ (new directory with sample patterns)
+- requirements.txt (updated dependencies)
+- README.md (enhanced documentation)
+- Various project structure and demo files

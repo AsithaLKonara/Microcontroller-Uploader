@@ -1,0 +1,49 @@
+J Tech Pixel Uploader v3.0 - Installation Instructions
+
+🚀 INSTALLATION:
+1. Extract this package to your desired location
+2. Run J_Tech_Pixel_Uploader_v3.0.exe
+3. The application will automatically check and install dependencies
+4. No additional setup required!
+
+✨ FEATURES:
+- 25 ICs Support (ESP, AVR, STM32, RP2040, Teensy, Arduino, etc.)
+- Enhanced .dat File Support with Visual Pattern Editor
+- Automatic Dependency Installation
+- Advanced Firmware Validation
+- Hardware Reset Features
+- Professional UI with Responsive Design
+- Comprehensive Error Logging
+- Multi-format Firmware Support (.bin, .hex, .dat, .uf2, .elf)
+- LED Pattern Protocol (LEDP) Support
+- Filesystem Image Creation (SPIFFS/LittleFS)
+
+📚 DOCUMENTATION:
+- README.md - Basic usage
+- README_ENHANCED.md - Enhanced features
+- 25_ICS_SUPPORT.md - Complete IC support list
+- DAT_FILE_SUPPORT_ENHANCEMENTS.md - .dat file features
+- ENHANCED_FEATURES_SUMMARY.md - Feature overview
+- UI_IMPROVEMENTS_IMPLEMENTED.md - UI enhancements
+- VALIDATION_SYSTEM_SUMMARY.md - Firmware validation
+- FIRMWARE_VALIDATION_README.md - Validation details
+- ENHANCED_RESET_FEATURES.md - Hardware reset features
+- ENHANCED_UPLOADER_IMPROVEMENTS.md - Uploader improvements
+- PROJECT_STRUCTURE.md - Project organization
+- COMPLETE_FUNCTIONAL_OVERVIEW.md - Complete functionality
+- UI_LAYOUT_DESCRIPTION.md - UI layout details
+- UI_UX_IMPROVEMENTS_SUMMARY.md - UX improvements
+- PIXEL_FIX_CHECKLIST.txt - Pixel troubleshooting
+- GIT_COMMANDS.txt - Git operations
+
+🔧 SYSTEM REQUIREMENTS:
+- Windows 10/11 (64-bit)
+- Python 3.7+ (automatically managed)
+- Internet connection for dependency installation
+
+💡 TROUBLESHOOTING:
+- If you encounter issues, check the application log
+- Dependencies are automatically installed on first run
+- Sample firmware included for testing
+
+🎉 ENJOY YOUR ENHANCED UPLOADER!

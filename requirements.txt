@@ -2,6 +2,10 @@
 pyserial==3.5
 esptool==4.6.2
 
+# Pattern editor and image processing
+Pillow>=9.0.0
+numpy>=1.21.0
+
 # Optional tools for enhanced functionality
 # These are recommended but not required for basic operation
 

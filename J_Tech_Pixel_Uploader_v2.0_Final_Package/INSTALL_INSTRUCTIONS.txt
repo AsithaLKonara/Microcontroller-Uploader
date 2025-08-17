@@ -1,0 +1,42 @@
+J Tech Pixel Uploader v2.0 Final - Installation Instructions
+================================================================
+
+QUICK START:
+1. Extract this ZIP file to any folder
+2. Double-click "J_Tech_Pixel_Uploader_v2.0_Final.exe"
+3. The software will automatically check and install dependencies
+4. Connect your ESP8266/ESP32 device and start uploading!
+
+FEATURES:
+✅ Automatic dependency installation
+✅ ESP8266/ESP32 support
+✅ Multiple firmware formats (.bin, .hex, .dat)
+✅ Professional GUI with real-time progress
+✅ Comprehensive logging and error handling
+✅ Sample firmware included
+
+SYSTEM REQUIREMENTS:
+- Windows 10/11 (64-bit)
+- USB port for device connection
+- Internet connection for dependency installation
+
+SUPPORTED DEVICES:
+- ESP8266 (NodeMCU, Wemos D1 Mini)
+- ESP32 (DevKit, ESP32-WROOM)
+- AVR (Arduino Uno, Nano, Pro Mini)
+- STM32 (STM32F103, STM32F407)
+
+FIRMWARE FORMATS:
+- .bin - Binary files (ESP devices)
+- .hex - Intel HEX files (AVR devices)
+- .dat - Data files (filesystem mode)
+
+TROUBLESHOOTING:
+- If dependencies fail to install, run as Administrator
+- Ensure device is in flash mode (GPIO0 for ESP devices)
+- Check USB drivers are installed
+- Try different USB ports
+
+For more information, see README.md and DEPENDENCY_INSTALLER_README.md
+
+© 2024 J Tech Pixel - Professional Microcontroller Solutions

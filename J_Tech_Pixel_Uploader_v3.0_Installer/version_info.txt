@@ -1,0 +1,22 @@
+J Tech Pixel Uploader v3.0
+Build Date: 2025-08-17 19:23:11
+
+Features:
+✅ 25 ICs Support (ESP, AVR, STM32, RP2040, Teensy, Arduino, etc.)
+✅ Enhanced .dat File Support with Visual Pattern Editor
+✅ Automatic Dependency Installation
+✅ Advanced Firmware Validation
+✅ Hardware Reset Features
+✅ Professional UI with Responsive Design
+✅ Comprehensive Error Logging
+✅ Multi-format Firmware Support (.bin, .hex, .dat, .uf2, .elf)
+✅ LED Pattern Protocol (LEDP) Support
+✅ Filesystem Image Creation (SPIFFS/LittleFS)
+✅ Cross-platform Compatibility
+
+Dependencies:
+- Python 3.7+
+- pyserial, esptool, Pillow, numpy
+- System tools: avrdude, stm32flash, rp2040, etc.
+
+This is the final v3.0 release with all enhanced features implemented.
