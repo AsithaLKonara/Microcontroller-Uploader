@@ -1,0 +1,22 @@
+J Tech Pixel Uploader v2.0 - Installation Instructions
+
+1. Extract all files from this package to a folder of your choice
+2. Run J_Tech_Pixel_Uploader_v2.0.exe to start the application
+3. No additional installation is required - this is a portable application
+
+System Requirements:
+- Windows 10/11 (64-bit)
+- USB ports for device connection
+- Python 3.7+ (if running from source)
+
+Features:
+- ESP8266/ESP32 firmware flashing
+- Support for .bin, .hex, and .dat files
+- Automatic COM port detection
+- Real-time upload progress
+- Comprehensive logging system
+- Professional light theme UI
+
+For support or questions, please refer to the README.md file.
+
+© 2024 J Tech Pixel. All rights reserved.
